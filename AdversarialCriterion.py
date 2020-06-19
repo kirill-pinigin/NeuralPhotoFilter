@@ -41,7 +41,14 @@ class AdversarialCriterion(nn.Module):
         self.lossD = None
 
     def forward(self, actual, desire):
-        return  self.evaluate(actual, desire), self.update(actual, desire)
+        self.discriminator.eval()
+        fake = self.discriminator(actual)
+        ones = Variable(torch.ones(fake.shape).to(actual.device))
+        self.lossG = self.perceptualizer(actual, desire) + self.weight * self.bce(fake, ones)
+        real = self.discriminator(desire)
+        zeros = Variable(torch.zeros(fake.shape).to(actual.device))
+        self.lossD = self.bce(real, ones) + self.bce(fake, zeros)
+        return  self.lossG
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()
@@ -50,15 +57,7 @@ class AdversarialCriterion(nn.Module):
         self.lossG = self.perceptualizer(actual, desire) + self.weight * self.bce(result, ones)
         return self.lossG
 
-    def update(self, actual, desire):
-        self.discriminator.train()
-        real = self.discriminator(desire.detach())
-        ones = Variable(torch.ones(real.shape).to(actual.device))
-        fake =  self.discriminator(actual.detach())
-        zeros = Variable(torch.zeros(fake.shape).to(actual.device))
-        lossADreal = self.bce(real, ones)
-        lossADfake = self.bce(fake, zeros)
-        self.lossD = lossADreal + lossADfake
+    def update(self):
         return self.lossD
 
     def backward(self, retain_variables=True):
@@ -72,7 +71,7 @@ class AdversarialStyleCriterion(AdversarialCriterion):
         self.distance = nn.L1Loss()
 
     def evaluate(self, actual, desire):
-        self.lossG = super(AdversarialStyleCriterion, self).forward(actual, desire) + self.distance(actual, desire)
+        self.lossG = super(AdversarialStyleCriterion, self).evaluate(actual, desire) + self.distance(actual, desire)
         return self.lossG
 
 
@@ -85,7 +84,7 @@ class DSLRAdversaialCriterion(AdversarialCriterion):
         self.tv = TotalVariation()
 
     def evaluate(self, actual, desire):
-        self.lossG = super(DSLRAdversaialCriterion, self).forward(actual, desire) \
+        self.lossG = super(DSLRAdversaialCriterion, self).evaluate(actual, desire) \
                     + self.pyramid(actual, desire) \
                     + self.tv(actual)
         return self.lossG
@@ -99,7 +98,7 @@ class MobileImprovingAdversarialCriterion(AdversarialCriterion):
         self.tv = TotalVariation()
         self.distance = nn.L1Loss()
 
-    def evaluate(self, actual, desire):
+    def forward(self, actual, desire):
         self.lossG = super(MobileImprovingAdversarialCriterion, self).forward(actual, desire) + self.distance(actual, desire) + self.ssim(actual, desire)
         return self.lossG
 
@@ -129,7 +128,7 @@ class ChromaAdversarialCriterion(MobileImprovingAdversarialCriterion):
         self.HSV = HueSaturationValueCriterion()
 
     def evaluate(self, actual, desire):
-        self.lossG = super(ChromaAdversarialCriterion, self).forward(actual, desire) + self.HSV(actual, desire)
+        self.lossG = super(ChromaAdversarialCriterion, self).evaluate(actual, desire) + self.HSV(actual, desire)
         return self.lossG
 
 
@@ -153,7 +152,7 @@ class PatchColorAdversarialCriterion(PatchAdversarialCriterion):
         self.chroma_edge = ChromaEdgePerceptualCriterion()
 
     def forward(self, actual, desire):
-        self.lossG = super(PatchColorAdversarialCriterion, self).forward(actual, desire) + self.chroma_edge(actual, desire)
+        self.lossG = super(PatchColorAdversarialCriterion, self).evaluate(actual, desire) + self.chroma_edge(actual, desire)
         return self.lossG
 
 
@@ -202,11 +201,11 @@ class PhotoRealisticAdversarialCriterion(AdversarialCriterion):
         self.discriminator.to(self.device)
 
     def evaluate(self, actual, desire):
-        self.lossG = super(PhotoRealisticAdversarialCriterion, self).forward(actual, desire) + nn.functional.mse_lossA(actual, desire)
+        self.lossG = super(PhotoRealisticAdversarialCriterion, self).evaluate(actual, desire) + nn.functional.mse_lossA(actual, desire)
         return self.lossG
 
 
-class SpectralAdversarialCriterion(nn.Module):
+class SpectralAdversarialCriterion(AdversarialCriterion):
     def __init__(self, dimension):
         super(SpectralAdversarialCriterion, self).__init__()
         self.perceptualizer = MobilePerceptualCriterion(dimension)
@@ -228,11 +227,10 @@ class SpectralAdversarialCriterion(nn.Module):
         )
 
         self.relu = nn.ReLU()
-        self.lossG = None
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()
-        self.lossG = 1e2*self.perceptualizer(actual, desire) - self.discriminator(actual).view(-1).mean()
+        self.lossG = 1e2*self.perceptualizer(actual, desire) - self.discriminator(actual).mean()
         return self.lossG
 
     def update(self, actual, desire):

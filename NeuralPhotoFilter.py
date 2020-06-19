@@ -10,7 +10,7 @@ import torchvision
 import shutil
 
 from Dataset import  load_image, is_image_file
-from  NeuralModel import NeuralModel
+from DataParallel import  DataParallelCriterion , DataParallelModel
 
 LEARNING_RATE = 1e-3
 LR_THRESHOLD = 1e-7
@@ -23,18 +23,22 @@ ITERATION_LIMIT = int(1e6)
 class NeuralPhotoFilter(object):
     def __init__(self, generator,  criterion, accuracy, dimension=1, image_size=256):
         self.cudas = list(range(torch.cuda.device_count()))
-        self.model = NeuralModel(generator, criterion)
+        self.generator = DataParallelModel(generator, device_ids=self.cudas, output_device=self.cudas)
+        self.criterion = DataParallelCriterion(criterion, device_ids=self.cudas, output_device=self.cudas)
+        self.accuracy = DataParallelCriterion(accuracy, device_ids=self.cudas)
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.generator.to(self.device)
+        self.criterion.to(self.device)
+        self.accuracy.to(self.device)
+
         self.DIMENSION = dimension
         self.IMAGE_SIZE= image_size
-        self.optimizerG = torch.optim.Adam(self.model.generator.parameters(), lr = LEARNING_RATE)
-        self.optimizerD = torch.optim.Adam(self.model.criterion.discriminator.parameters(), lr = LEARNING_RATE)
+
+        self.optimizerG = torch.optim.Adam(self.generator.module.parameters(), lr = LEARNING_RATE)
+        self.optimizerD = torch.optim.Adam(self.criterion.module.discriminator.parameters(), lr = LEARNING_RATE)
         self.schedulerG = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizerG, mode='max', factor=0.1, patience=6, verbose=True, min_lr=LR_THRESHOLD)
         self.schedulerD = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizerD, mode='min', factor=0.1, patience=6, verbose=True, min_lr=LR_THRESHOLD)
-        self.model = torch.nn.DataParallel(self.model)
-        self.accuracy  = torch.nn.DataParallel(accuracy, device_ids= self.cudas)
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.model.to(self.device)
-        self.accuracy.to(self.device)
+
         self.iteration = int(0)
         self.tensoration = torchvision.transforms.ToTensor()
         self.best_lossD = 1e6
@@ -97,9 +101,9 @@ class NeuralPhotoFilter(object):
 
             for phase in ['train', 'val']:
                 if phase == 'train':
-                    self.model.module.generator.train(True)
+                    self.generator.module.train(True)
                 else:
-                    self.model.module.generator.train(False)
+                    self.generator.module.train(False)
 
                 running_lossG = 0.0
                 running_lossD = 0.0
@@ -111,8 +115,12 @@ class NeuralPhotoFilter(object):
                     targets = Variable(targets.to(self.device))
                     self.optimizerG.zero_grad()
                     self.optimizerD.zero_grad()
-                    outputs, lossG, lossD = self.model(inputs, targets)
-                    acc = self.accuracy(outputs, targets)
+                    outputs = self.generator(inputs)
+                    lossG = self.criterion(outputs, targets)
+                    lossD = self.criterion.module.update()
+                    print(lossD)
+                    acc = self.accuracy(outputs, targets)  # .mean()
+
 
                     if phase == 'train':
                         lossG.mean().backward()
@@ -173,7 +181,8 @@ class NeuralPhotoFilter(object):
         for data in test_loader:
             inputs, targets = data[0], data[1]
             inputs, targets = Variable(inputs.to(self.device)), Variable(targets.to(self.device))
-            outputs, loss, _ = self.model(inputs)
+            outputs = self.generator(inputs)
+            loss,_ = self.criterion(outputs, targets)
             acc = self.accuracy(outputs, targets)
             metric = float(acc.item())
             counter = counter + 1
@@ -203,25 +212,25 @@ class NeuralPhotoFilter(object):
         print('Loss: {:.4f} Accuracy {:.4f} '.format( epoch_loss, epoch_acc))
 
     def save(self, type):
-        model = self.model.module.generator
+        model = self.generator.module
         model = model.cpu()
         model.eval()
         x = Variable(torch.zeros(1, self.DIMENSION, self.IMAGE_SIZE, self.IMAGE_SIZE))
-        path = self.modelPath + "/" + str(self.model.module.generator.__class__.__name__) + str(self.model.module.generator.deconv1.__class__.__name__) + str(self.model.module.generator.activation.__class__.__name__)
+        path = self.modelPath + "/" + str(self.generator.module.__class__.__name__) + str(self.generator.module.deconv1.__class__.__name__) + str(self.generator.module.activation.__class__.__name__)
         source = "Color" if self.DIMENSION == 3 else "Gray"
         dest =  "2Color" if self.DIMENSION == 3 else "2Gray"
         torch_out = torch.onnx._export(model, x, path + source + dest + str(self.IMAGE_SIZE)+ "_" + type + ".onnx", export_params=True)
         torch.save(model.state_dict(), path + "_" + type  + ".pth")
-        self.model.module.generator.to(self.device)
+        self.generator.module.to(self.device)
 
     def load(self, modelPath=None):
         if modelPath is not None:
-            self.model.module.generator.load_state_dict(torch.load(modelPath))
+            self.generator.module.load_state_dict(torch.load(modelPath))
             print('load generator model')
         else:
-            path = self.modelPath + "/" + str(self.model.module.generator.__class__.__name__) + str(self.model.module.generator.deconv1.__class__.__name__) + str(self.model.module.generator.activation.__class__.__name__)
+            path = self.modelPath + "/" + str(self.generator.module.__class__.__name__) + str(self.generator.module.deconv1.__class__.__name__) + str(self.generator.module.activation.__class__.__name__)
             if os.path.isfile(path + '_Best.pth'):
-                self.model.module.generator.load_state_dict(torch.load(path + '_Best.pth'))
+                self.generator.module.load_state_dict(torch.load(path + '_Best.pth'))
                 print('load Best generator ')
 
     def display(self, inputs, outputs, targets, metric, epoch):
@@ -249,7 +258,7 @@ class NeuralPhotoFilter(object):
             input = self.tensoration(image).unsqueeze(0)
             print(input.shape)
             input =  Variable(input.to(self.device))
-            output,_,_ = self.model.generator(input)
+            output,_,_ = self.generator(input)
             c = c + 1
             torchvision.utils.save_image(output.data, directory +'00000'+ str(c) + '.png', nrow=input.size(0))
             print("Processed : " ,directory  + str(c) + '.png')

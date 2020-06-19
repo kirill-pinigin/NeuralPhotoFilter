@@ -86,7 +86,7 @@ class AdaptivePerceptualCriterion(nn.Module):
         self.bce = nn.BCELoss()
         self.feat = nn.ReLU()
         self.margin = 1.0
-        self.lossP = None
+        self.lossG = None
         self.lossD = None
 
     def evaluate(self, actual, desire):
@@ -98,26 +98,7 @@ class AdaptivePerceptualCriterion(nn.Module):
             ploss += self.factors[i]*self.ContentCriterion(actual_features[i], desire_features[i])
 
         return ploss, a, d
-'''
-    def meta_optimize(self, lossD, length):
-        self.current_loss += float(lossD.item()) / length
 
-        if self.counter > ITERATION_LIMIT:
-            self.current_loss = self.current_loss / float(ITERATION_LIMIT)
-            if self.current_loss < self.best_loss:
-                self.best_loss = self.current_loss
-                print('! best_loss !', self.best_loss)
-            else:
-                for param_group in self.optimizer.param_groups:
-                    lr = param_group['lr']
-                    if lr >= LR_THRESHOLD:
-                        param_group['lr'] = lr * 0.2
-                        print('! Decrease LearningRate in Perceptual !', lr)
-            self.counter = int(0)
-            self.current_loss = float(0)
-
-        self.counter += int(1)
-'''
     def update(self, actual, desire):
         self.discriminator.train()
         ploss, fake, real = self.evaluate(actual, desire)
@@ -125,16 +106,16 @@ class AdaptivePerceptualCriterion(nn.Module):
         ones = Variable(torch.ones(real.shape).to(actual.device))
         lossDreal = self.AdversarialCriterion(real, ones)
         lossDfake = self.AdversarialCriterion(fake, zeros)
-        self.LossD = lossDreal + lossDfake + self.feat(self.margin - ploss).mean()
-        return self.LossD
+        self.lossD = lossDreal + lossDfake + self.feat(self.margin - ploss).mean()
+        return self.lossD
 
     def forward(self, actual, desire):
         self.discriminator.eval()
         ploss, rest, _ = self.evaluate(actual, desire)
         ones = Variable(torch.ones(rest.shape).to(actual.device))
         aloss = self.AdversarialCriterion(rest, ones)
-        self.LossP = ploss + aloss + self.ContentCriterion(actual, desire)
-        return self.LossP
+        self.lossG = ploss + aloss + self.ContentCriterion(actual, desire)
+        return self.lossG
 
     def backward(self, retain_variables=True):
         return self.LossD.backward(retain_variables=retain_variables)

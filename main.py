@@ -22,13 +22,12 @@ parser.add_argument('--image_size',        type = int,   default=256, help='pixe
 parser.add_argument('--image_dir',         type = str,   default='./AustoRestorerEntireDataset300/', help='path to dataset')
 parser.add_argument('--operation',         type = str,   default='Restoration', help='type of deconvolution')
 parser.add_argument('--generator',         type = str,   default='MovaviSupreme', help='type of image generator')
-parser.add_argument('--criterion',         type = str,   default='MobileImproving', help='type of criterion')
+parser.add_argument('--criterion',         type = str,   default='Adversarial', help='type of criterion')
 parser.add_argument('--deconv',            type = str,   default='Upsample', help='type of deconv')
 parser.add_argument('--activation',        type = str,   default='Leaky', help='type of activation')
 parser.add_argument('--optimizer',         type = str,   default='Adam', help='type of optimizer')
-parser.add_argument('--batch_size',        type = int,   default=256)
+parser.add_argument('--batch_size',        type = int,   default=128)
 parser.add_argument('--epochs',            type = int,   default=256)
-parser.add_argument('--lr',                type = float, default=1e-3)
 parser.add_argument('--resume_train',      type = bool,  default=True)
 
 args = parser.parse_args()
@@ -82,7 +81,7 @@ generator_types = {
                     }
 
 operation_types =   {
-                        'Coloriztion'       : ColorizationDataset,
+                        'Colorization'      : ColorizationDataset,
                         'Deblur'            : DeblurDataset,
                         'Denoise'           : DenoiseDataset,
                         'Restoration'       : Image2ImageDataset,
@@ -114,7 +113,6 @@ model = generator_types[args.generator]
 deconvLayer = (deconv_types[args.deconv] if args.deconv in deconv_types else deconv_types['upsample'])
 function = (activation_types[args.activation] if args.activation in activation_types else activation_types['Leaky'])
 generator = model(dimension=args.dimension, deconv=deconvLayer, activation=function)
-optimizer =(optimizer_types[args.optimizer] if args.optimizer in optimizer_types else optimizer_types['Adam'])(generator.parameters(), lr = args.lr)
 criterion = criterion_types[args.criterion](dimension=args.dimension)
 deconvolution_dataset = operation_types[args.operation]
 
@@ -132,6 +130,6 @@ imageloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=bat
 test_dataset = deconvolution_dataset(args.dimension, args.image_size, args.image_dir+'/val/',  augmentation = False)
 testloader = torch.utils.data.DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=4)
 
-framework = NeuralPhotoFilter(generator = generator, criterion = criterion, accuracy=accuracy, optimizer = optimizer)
+framework = NeuralPhotoFilter(generator = generator, criterion = criterion, accuracy=accuracy)
 framework.approximate(dataloaders = imageloaders, num_epochs=args.epochs, resume_train=args.resume_train)
 framework.estimate(testloader)

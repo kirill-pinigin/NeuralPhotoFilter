@@ -393,7 +393,7 @@ class MobilePerceptualCriterion(nn.Module):
         self.features = MobileExtractor(dimension)
         self.features.eval()
         self.features.to(self.device)
-        self.distance = nn.MSECriterion()
+        self.distance = nn.MSELoss()
 
     def forward(self, actual, desire):
         actuals = self.features(actual)

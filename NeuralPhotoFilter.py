@@ -116,8 +116,8 @@ class NeuralPhotoFilter(object):
                     self.optimizerG.zero_grad()
                     self.optimizerD.zero_grad()
                     outputs = self.generator(inputs)
-                    lossG = self.criterion(outputs, targets)
-                    lossD = self.criterion.module.update()
+                    lossG, lossD = self.criterion(outputs, targets)
+                    #lossD = self.criterion.module.update()
                     print(lossD)
                     acc = self.accuracy(outputs, targets)  # .mean()
 

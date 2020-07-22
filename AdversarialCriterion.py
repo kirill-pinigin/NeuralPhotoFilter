@@ -48,7 +48,7 @@ class AdversarialCriterion(nn.Module):
         real = self.discriminator(desire)
         zeros = Variable(torch.zeros(fake.shape).to(actual.device))
         self.lossD = self.bce(real, ones) + self.bce(fake, zeros)
-        return  self.lossG
+        return  self.lossG, self.lossD
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()
@@ -99,8 +99,9 @@ class MobileImprovingAdversarialCriterion(AdversarialCriterion):
         self.distance = nn.L1Loss()
 
     def forward(self, actual, desire):
-        self.lossG = super(MobileImprovingAdversarialCriterion, self).forward(actual, desire) + self.distance(actual, desire) + self.ssim(actual, desire)
-        return self.lossG
+        self.lossG, self.lossD = super(MobileImprovingAdversarialCriterion, self).forward(actual, desire)
+        self.lossG += self.distance(actual, desire) + self.ssim(actual, desire)
+        return self.lossG, self.lossD
 
 
 class MultiSigmaCriterion(MobileImprovingAdversarialCriterion):

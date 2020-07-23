@@ -216,7 +216,7 @@ class SpectralDiscriminator(PerceptualDiscriminator):
 class SpectralAdaptivePerceptualCriterion(AdaptivePerceptualCriterion):
     def __init__(self, dimension):
         super(SpectralAdaptivePerceptualCriterion, self).__init__(dimension)
-        self.self.bce = nn.BCEWithLogitsLoss()
+        self.bce = nn.BCEWithLogitsLoss()
         self.discriminator = SpectralDiscriminator(dimension)
 
     def update(self, actual, desire):

@@ -375,7 +375,6 @@ class RandomResize(object):
     def __call__(self, input):
         factor = random.randint(2, 12)
         factor *= 0.5
-        factor = 2
         image = torchvision.transforms.functional.resize(input, (int(self.image_size / factor), int(self.image_size / factor)), Image.BICUBIC)
         result = torchvision.transforms.functional.resize(image, (int(self.image_size), int(self.image_size)), Image.BICUBIC)
         return result

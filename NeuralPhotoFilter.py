@@ -8,24 +8,24 @@ import torch
 from torch.autograd import Variable
 import torchvision
 import shutil
+import numpy as np
 
 from Dataset import  load_image, is_image_file
-from DataParallel import  DataParallelCriterion , DataParallelModel
-
+from DataParallel import  DataParallelCriterion , DataParallelModel, DataParallelMetric
 LEARNING_RATE = 1e-3
 LR_THRESHOLD = 1e-7
 TRYING_LR = 3
 DEGRADATION_TOLERANCY = 7
 ACCURACY_TRESHOLD = float(0.0625)
 ITERATION_LIMIT = int(1e6)
-
+DISPLAY_LENGTH = 8
 
 class NeuralPhotoFilter(object):
     def __init__(self, generator,  criterion, accuracy, dimension=1, image_size=256):
         self.cudas = list(range(torch.cuda.device_count()))
         self.generator = DataParallelModel(generator, device_ids=self.cudas, output_device=self.cudas)
         self.criterion = DataParallelCriterion(criterion, device_ids=self.cudas, output_device=self.cudas)
-        self.accuracy = DataParallelCriterion(accuracy, device_ids=self.cudas)
+        self.accuracy = DataParallelMetric(accuracy)
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.generator.to(self.device)
         self.criterion.to(self.device)
@@ -102,8 +102,10 @@ class NeuralPhotoFilter(object):
             for phase in ['train', 'val']:
                 if phase == 'train':
                     self.generator.module.train(True)
+                    self.criterion.module.train(True)
                 else:
                     self.generator.module.train(False)
+                    self.criterion.module.train(False)
 
                 running_lossG = 0.0
                 running_lossD = 0.0
@@ -117,18 +119,15 @@ class NeuralPhotoFilter(object):
                     self.optimizerD.zero_grad()
                     outputs = self.generator(inputs)
                     lossG, lossD = self.criterion(outputs, targets)
-                    #lossD = self.criterion.module.update()
-                    print(lossD)
                     acc = self.accuracy(outputs, targets)  # .mean()
 
-
                     if phase == 'train':
-                        lossG.mean().backward()
+                        lossG.backward()
                         self.optimizerG.step()
-                        lossD.mean().backward()
+                        lossD.backward()
                         self.optimizerD.step()
 
-                    if phase == 'val' :#and acc.item() > best_acc:
+                    if phase == 'val':
                         self.display(inputs, outputs, targets, float(acc.mean()), epoch)
 
                     running_lossG += lossG.mean() * inputs.size(0)
@@ -241,9 +240,8 @@ class NeuralPhotoFilter(object):
             self.iteration = 0
         self.iteration = self.iteration + 1
 
-        #result = torch.cat([inputs.data, outputs.data, targets.data], dim=0)
-        torchvision.utils.save_image(outputs.data, path + "Input_OutPut_Target_" + str(self.iteration) + '_SSIM=' + str(
-            "{0:.2f}".format(metric)) + '.jpg', nrow=8)
+        for i in range(len(outputs)):
+            torchvision.utils.save_image(outputs[i].data, path + "Input_OutPut_Target_" + str(self.iteration) + '_SSIM=' + str("{0:.2f}".format(metric)) + '.jpg', nrow=8)
 
     def process(self, image_dir, modelPath=None):
         c = 0

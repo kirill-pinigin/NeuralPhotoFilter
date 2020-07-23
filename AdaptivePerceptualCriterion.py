@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from torchvision import models
 from torch.autograd import Variable
-from torch.nn.parameter import Parameter
 import random
 
 from NeuralBlocks import  SpectralNorm, Flatten
@@ -89,7 +88,13 @@ class AdaptivePerceptualCriterion(nn.Module):
         self.lossG = None
         self.lossD = None
 
-    def evaluate(self, actual, desire):
+    def forward(self, actual, desire):
+        return self.evaluate(actual, desire), self.update(actual, desire)
+
+    def backward(self, retain_variables=True):
+        return self.lossG.backward(retain_variables=retain_variables)
+
+    def featurize(self, actual, desire):
         actual_features, a = self.discriminator(actual)
         desire_features, d = self.discriminator(desire)
         ploss = 0.0
@@ -99,26 +104,23 @@ class AdaptivePerceptualCriterion(nn.Module):
 
         return ploss, a, d
 
+    def evaluate(self, actual, desire):
+        self.discriminator.eval()
+        ploss, rest, _ = self.featurize(actual, desire)
+        ones = Variable(torch.ones(rest.shape).to(actual.device))
+        aloss = self.AdversarialCriterion(rest, ones)
+        self.lossG = ploss + aloss + self.ContentCriterion(actual, desire)
+        return self.lossG
+
     def update(self, actual, desire):
         self.discriminator.train()
-        ploss, fake, real = self.evaluate(actual, desire)
+        ploss, fake, real = self.featurize(actual, desire)
         zeros = Variable(torch.zeros(fake.shape).to(actual.device))
         ones = Variable(torch.ones(real.shape).to(actual.device))
         lossDreal = self.AdversarialCriterion(real, ones)
         lossDfake = self.AdversarialCriterion(fake, zeros)
         self.lossD = lossDreal + lossDfake + self.feat(self.margin - ploss).mean()
         return self.lossD
-
-    def forward(self, actual, desire):
-        self.discriminator.eval()
-        ploss, rest, _ = self.evaluate(actual, desire)
-        ones = Variable(torch.ones(rest.shape).to(actual.device))
-        aloss = self.AdversarialCriterion(rest, ones)
-        self.lossG = ploss + aloss + self.ContentCriterion(actual, desire)
-        return self.lossG
-
-    def backward(self, retain_variables=True):
-        return self.LossD.backward(retain_variables=retain_variables)
 
 
 class ResidualDiscriminator(PerceptualDiscriminator):
@@ -226,44 +228,38 @@ class SpectralAdaptivePerceptualCriterion(AdaptivePerceptualCriterion):
 
     def update(self, actual, desire):
         self.discriminator.train()
-        ploss, fake, real = self.evaluate(actual, desire)
-        lossDreal = self.feat(1.0 - real).mean()
-        lossDfake = self.feat(1.0 + fake).mean()
-
-        self.LossD = lossDreal + lossDfake + self.feat(self.margin - ploss).mean()
+        ploss, fake, real = self.featurize(actual, desire)
+        self.LossD = self.feat(1.0 - real).mean() + self.feat(1.0 + fake).mean() + self.feat(self.margin - ploss).mean()
         return self.LossD
 
-    def forward(self, actual, desire):
+    def evaluate(self, actual, desire):
         self.predictor.eval()
         self.features.eval()
-        actual_features, _, ploss = self.evaluate(actual, desire)
-        self.LossP = ploss - self.predictor(actual_features[-1]).view(-1).mean() + self.ContentCriterion(actual, desire)
-        return self.LossP
+        actual_features, _, ploss = self.featurize(actual, desire)
+        self.lossG = ploss - self.predictor(actual_features[-1]).view(-1).mean() + self.ContentCriterion(actual, desire)
+        return self.lossG
 
 
 class WassersteinAdaptivePerceptualCriterion(SpectralAdaptivePerceptualCriterion):
     def __init__(self):
         super(WassersteinAdaptivePerceptualCriterion, self).__init__()
 
-    def forward(self, actual, desire):
+    def evaluate(self, actual, desire):
         self.discriminator.eval()
-        ploss, result, _ = self.evaluate(actual, desire)
-        self.LossP = ploss - result.mean()
-        return self.LossP
+        ploss, result, _ = self.featurize(actual, desire)
+        self.lossG = ploss - result.mean()
+        return self.lossG
 
     def update(self, actual, desire):
         self.discriminator.train()
-        ploss, fake, real = self.evaluate(actual, desire)
-
+        ploss, fake, real = self.featurize(actual, desire)
         wgan_loss = fake.mean() - real.mean()
         alpha = float(random.uniform(0, 1))
         interpolates  = alpha * desire + (1 - alpha) * actual
         interpolates = Variable(interpolates.clone(), requires_grad=True).to(actual.device)
         _, interpolates_discriminator_out = self.discriminator(interpolates)
-
         buffer = Variable(torch.ones_like(interpolates_discriminator_out), requires_grad=True).to(actual.device)
         gradients = torch.autograd.grad(outputs=interpolates_discriminator_out, inputs=interpolates,grad_outputs=buffer, retain_graph=True, create_graph=True)[0]
         gradient_penalty = ((gradients.view(gradients.size(0), -1).norm(2, dim=1) - 1) ** 2).mean()
         self.LossD = wgan_loss + 1e2*gradient_penalty
-
         return self.LossD

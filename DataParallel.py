@@ -66,8 +66,19 @@ class DataParallelModel(DataParallel):
 
 class DataParallelCriterion(DataParallel):
     def forward(self, inputs, *targets, **kwargs):
-        # input should be already scatterd
-        # scattering the targets instead
+        if not self.device_ids:
+            return self.module(inputs, *targets, **kwargs)
+        targets, kwargs = self.scatter(targets, kwargs, self.device_ids)
+        if len(self.device_ids) == 1:
+            return self.module(inputs, *targets[0], **kwargs[0])
+        replicas = self.replicate(self.module, self.device_ids[:len(inputs)])
+        outputs = _criterion_parallel_apply(replicas, inputs, targets, kwargs)
+        g, d = zip(*outputs)
+        return Reduce.apply(*g) / len(outputs), Reduce.apply(*d) / len(outputs)
+
+
+class DataParallelMetric(DataParallel):
+    def forward(self, inputs, *targets, **kwargs):
         if not self.device_ids:
             return self.module(inputs, *targets, **kwargs)
         targets, kwargs = self.scatter(targets, kwargs, self.device_ids)

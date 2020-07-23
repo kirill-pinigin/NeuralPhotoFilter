@@ -3,6 +3,7 @@ import torch.nn as nn
 
 from NeuralBlocks import BaseBlock, SimpleDecoder, SimpleEncoder, UpsampleDeConv, ResidualBlock
 
+
 class AdelaideGenerator(torch.nn.Module):
     def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
         super(AdelaideGenerator, self).__init__()

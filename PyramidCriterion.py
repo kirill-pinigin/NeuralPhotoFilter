@@ -31,15 +31,12 @@ class PyramidExtractor(nn.Module):
 class PyramidCriterion(nn.Module):
     def __init__(self):
         super(PyramidCriterion, self).__init__()
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.cudas = list(range(torch.cuda.device_count()))
         self.features = PyramidExtractor()
-        self.features.to(self.device)
-        self.criterion = nn.MSECriterion()
+        self.criterion = nn.MSELoss()
 
     def forward(self, actual, desire):
-        outputs = torch.nn.parallel.data_parallel(module=self.features, inputs=actual, device_ids=self.cudas)
-        desires = torch.nn.parallel.data_parallel(module=self.features, inputs=desire, device_ids=self.cudas)
+        outputs = self.features(actual)
+        desires = self.features(desire)
 
         loss = 0.0
         for i in range(len(outputs)):

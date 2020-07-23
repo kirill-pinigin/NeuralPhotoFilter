@@ -68,13 +68,7 @@ class PerceptualDiscriminator(nn.Module):
         feat3 = self.feat3(feat2)
         feat4 = self.feat4(feat3)
         result = self.predictor(feat4)
-
-        feats = {
-            'feat1': feat1,
-            'feat2': feat2,
-            'feat3': feat3,
-            'feat4': feat4,
-        }
+        feats = [feat1, feat2, feat3, feat4]
         return feats, result
 
 class AdaptivePerceptualCriterion(nn.Module):
@@ -83,10 +77,11 @@ class AdaptivePerceptualCriterion(nn.Module):
         self.discriminator = PerceptualDiscriminator(dimension)
         self.distance = nn.L1Loss()
         self.bce = nn.BCELoss()
-        self.feat = nn.ReLU()
+        self.relu = nn.ReLU()
         self.margin = 1.0
         self.lossG = None
         self.lossD = None
+        self.factors = [1.0, 1.0 / 2.0, 1.0 / 3.0, 1.0 / 4.0]
 
     def forward(self, actual, desire):
         return self.evaluate(actual, desire), self.update(actual, desire)
@@ -100,7 +95,7 @@ class AdaptivePerceptualCriterion(nn.Module):
         ploss = 0.0
 
         for i in range(len(desire_features)):
-            ploss += self.factors[i]*self.ContentCriterion(actual_features[i], desire_features[i])
+            ploss += self.factors[i]*self.distance(actual_features[i], desire_features[i])
 
         return ploss, a, d
 
@@ -108,8 +103,8 @@ class AdaptivePerceptualCriterion(nn.Module):
         self.discriminator.eval()
         ploss, rest, _ = self.featurize(actual, desire)
         ones = Variable(torch.ones(rest.shape).to(actual.device))
-        aloss = self.AdversarialCriterion(rest, ones)
-        self.lossG = ploss + aloss + self.ContentCriterion(actual, desire)
+        aloss = self.bce(rest, ones)
+        self.lossG = ploss + aloss + self.distance(actual, desire)
         return self.lossG
 
     def update(self, actual, desire):
@@ -117,9 +112,7 @@ class AdaptivePerceptualCriterion(nn.Module):
         ploss, fake, real = self.featurize(actual, desire)
         zeros = Variable(torch.zeros(fake.shape).to(actual.device))
         ones = Variable(torch.ones(real.shape).to(actual.device))
-        lossDreal = self.AdversarialCriterion(real, ones)
-        lossDfake = self.AdversarialCriterion(fake, zeros)
-        self.lossD = lossDreal + lossDfake + self.feat(self.margin - ploss).mean()
+        self.lossD = self.bce(real, ones) + self.bce(fake, zeros) + self.relu(self.margin - ploss).mean()
         return self.lossD
 
 
@@ -216,15 +209,15 @@ class SpectralDiscriminator(PerceptualDiscriminator):
 
         self.predictor = torch.nn.Sequential(
             SpectralNorm(nn.Conv2d(8, 1, 1, 1, 0, bias=False)),
-            Flatten
+            Flatten(),
         )
 
 
 class SpectralAdaptivePerceptualCriterion(AdaptivePerceptualCriterion):
-    def __init__(self):
-        super(SpectralAdaptivePerceptualCriterion, self).__init__()
-        self.AdversarialCriterion = nn.BCEWithLogitsCriterion()
-        self.discriminator = SpectralDiscriminator()
+    def __init__(self, dimension):
+        super(SpectralAdaptivePerceptualCriterion, self).__init__(dimension)
+        self.self.bce = nn.BCEWithLogitsLoss()
+        self.discriminator = SpectralDiscriminator(dimension)
 
     def update(self, actual, desire):
         self.discriminator.train()
@@ -233,16 +226,15 @@ class SpectralAdaptivePerceptualCriterion(AdaptivePerceptualCriterion):
         return self.LossD
 
     def evaluate(self, actual, desire):
-        self.predictor.eval()
-        self.features.eval()
+        self.discriminator.eval()
         actual_features, _, ploss = self.featurize(actual, desire)
-        self.lossG = ploss - self.predictor(actual_features[-1]).view(-1).mean() + self.ContentCriterion(actual, desire)
+        self.lossG = ploss - self.predictor(actual_features[-1]).view(-1).mean() + self.distance(actual, desire)
         return self.lossG
 
 
 class WassersteinAdaptivePerceptualCriterion(SpectralAdaptivePerceptualCriterion):
-    def __init__(self):
-        super(WassersteinAdaptivePerceptualCriterion, self).__init__()
+    def __init__(self, dimension):
+        super(WassersteinAdaptivePerceptualCriterion, self).__init__(dimension)
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()

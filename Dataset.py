@@ -5,12 +5,12 @@ import os
 import random
 
 import numpy as np
-from os import listdir, walk
+from os import listdir
 from os.path import join
 import cv2
 from PIL import ImageFilter, ImageEnhance, Image
 
-from DualTransform import DualComposeTransforms,  DualToTensor, DualRandomCrop, DualCenterCrop, DualRandomHorizontalFlip, DualRandomRotation, DualResize
+from DualTransform import DualComposeTransforms,  DualToTensor, DualRandomCrop, DualRandomHorizontalFlip, DualResize
 
 def get_immediate_subdirectories(a_dir):
     return [name for name in os.listdir(a_dir)
@@ -47,7 +47,6 @@ class Image2ImageDataset(data.Dataset):
 
         if augmentation:
             transforms_list = [
-                                  #DualRandomRotation(10),
                                   DualRandomCrop(image_size),
                                   DualRandomHorizontalFlip(),
                               ] + transforms_list
@@ -267,6 +266,7 @@ class RandomNoise(object):
         transforms = []
         noise = np.random.choice([1, 2 , 3])
         dispersion = random.uniform(self.sigmas [0], self.sigmas[1])
+
         if noise == 1:
             transforms.append(Lambda(lambda img: self.camera_noise(img, dispersion)))
 
@@ -277,7 +277,6 @@ class RandomNoise(object):
 
         else:
             transforms.append(Lambda(lambda img: self.gaussian_noise(img, dispersion)))
-            #transforms.append(Lambda(lambda img: self.luma_noise(img, dispersion)))
             random.shuffle(transforms)
 
         transform = torchvision.transforms.Compose(transforms)

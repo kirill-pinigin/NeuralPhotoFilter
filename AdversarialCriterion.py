@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.autograd import Variable
 import random
 
@@ -37,8 +36,8 @@ class AdversarialCriterion(nn.Module):
 
         self.perceptualizer = nn.MSELoss()
         self.bce = nn.BCELoss()
-        self.lossG = None
-        self.lossD = None
+        self.lossG = torch.ones(1)
+        self.lossD = torch.ones(1)
 
     def forward(self, actual, desire):
         return  self.evaluate(actual, desire), self.update(actual, desire)
@@ -78,7 +77,6 @@ class DSLRAdversaialCriterion(AdversarialCriterion):
     def __init__(self, dimension, weight : float = 1e-2):
         super(DSLRAdversaialCriterion, self).__init__(dimension, weight)
         self.perceptualizer = SharpPerceptualCriterion(dimension, weight)
-        self.discriminator.to(self.device)
         self.pyramid = PyramidCriterion()
         self.tv = TotalVariation()
 
@@ -99,7 +97,8 @@ class MobileImprovingAdversarialCriterion(AdversarialCriterion):
 
     def evaluate(self, actual, desire):
         self.lossG = super(MobileImprovingAdversarialCriterion, self).evaluate(actual, desire) \
-                     + self.distance(actual, desire) + self.ssim(actual, desire)
+                     + self.distance(actual, desire) + self.ssim(actual, desire) \
+                     + self.tv(actual)
         return self.lossG
 
 
@@ -118,7 +117,7 @@ class EchelonAdversaialCriterion(MobileImprovingAdversarialCriterion):
 class SubSampleAdversaialCriterion(MobileImprovingAdversarialCriterion):
     def __init__(self, dimension, weight : float = 1e-2):
         super(SubSampleAdversaialCriterion, self).__init__(dimension, weight)
-        self.perceptualizer = SubSamplePerceptualCriterion(dimension, weight)
+        self.perceptualizer = SubSamplePerceptualCriterion(dimension)
 
 
 class ChromaAdversarialCriterion(MobileImprovingAdversarialCriterion):
@@ -161,55 +160,12 @@ class PatchColorAdversarialCriterion(PatchAdversarialCriterion):
 class PhotoRealisticAdversarialCriterion(AdversarialCriterion):
     def __init__(self, dimension, weight : float = 1e-2):
         super(PhotoRealisticAdversarialCriterion, self).__init__(dimension, weight)
-        self.perceptualizer = SimplePerceptualCriterion()
-        self.discriminator = nn.Sequential(
-            nn.Conv2d(in_channels=dimension, out_channels=64, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(64),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=1, stride=1, padding=1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(in_channels=1024, out_channels=1, kernel_size=1, stride=1, padding=1, bias=False),
-            Flatten(),
-        )
-        self.discriminator.to(self.device)
-
-    def evaluate(self, actual, desire):
-        self.lossG = super(PhotoRealisticAdversarialCriterion, self).evaluate(actual, desire) + nn.functional.mse_lossA(actual, desire)
-        return self.lossG
+        self.perceptualizer = SimplePerceptualCriterion(dimension)
 
 
 class SpectralAdversarialCriterion(AdversarialCriterion):
     def __init__(self, dimension):
-        super(SpectralAdversarialCriterion, self).__init__()
+        super(SpectralAdversarialCriterion, self).__init__(dimension)
         self.perceptualizer = MobilePerceptualCriterion(dimension)
         self.discriminator = nn.Sequential(
             nn.Conv2d(in_channels=dimension, out_channels=64, kernel_size=4, stride=2, padding=1, bias=False),

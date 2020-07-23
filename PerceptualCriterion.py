@@ -34,10 +34,6 @@ class BasicFeatureExtractor(nn.Module):
             self.mean = Parameter(torch.tensor([0.485, 0.456, 0.406]).view(-1, 1, 1))
             self.std = Parameter(torch.tensor([0.229, 0.224, 0.225]).view(-1, 1, 1))
 
-        else:
-            self.mean = Parameter(torch.zeros(dimension).view(-1, 1, 1))
-            self.std = Parameter(torch.ones(dimension).view(-1, 1, 1))
-
         vgg_pretrained = vgg_config['dnn']
         conv = BasicFeatureExtractor.configure_input(dimension, vgg_pretrained)
 
@@ -320,7 +316,7 @@ class FastNeuralStylePerceptualCriterion(nn.Module):
         self.features = FastNeuralStyleExtractor(dimension)
         self.features.eval()
         self.features.to(self.device)
-        self.distance = nn.MSECriterion()
+        self.distance = nn.MSELoss()
 
     def forward(self, actual, desire):
         actuals = self.features(actual)
@@ -486,11 +482,11 @@ class SharpExtractor(nn.Module):
 
 class SharpPerceptualCriterion(FastNeuralStylePerceptualCriterion):
     def __init__(self , dimension, weight:float = 1e-1):
-        super(SharpPerceptualCriterion, self).__init__(weight)
+        super(SharpPerceptualCriterion, self).__init__(dimension, weight)
         self.features = SharpExtractor(dimension)
         self.features.eval()
         self.features.to(self.device)
-        self.distance = nn.MSECriterion()
+        self.distance = nn.MSELoss()
 
     def forward(self, actual, desire):
         actuals = self.features(actual)
@@ -706,7 +702,7 @@ class SimplePerceptualCriterion(nn.Module):
         self.features = SimpleExtractor(dimension)
         self.features.eval()
         self.features.to(self.device)
-        self.distance = nn.MSECriterion()
+        self.distance = nn.MSELoss()
 
     def forward(self, actual, desire):
         actuals = self.features(actual)
@@ -720,14 +716,14 @@ class SimplePerceptualCriterion(nn.Module):
 
 
 class SubSampleExtractor(BasicMultiFeatureExtractor):
-    def __init__(self, requires_grad=False, bn = True):
+    def __init__(self, dimension, requires_grad=False, bn = True):
         features = SUBSAMPLE_BN_CONFIG if bn else SUBSAMPLE_CONFIG
-        super(SubSampleExtractor, self).__init__(features, requires_grad)
+        super(SubSampleExtractor, self).__init__(dimension, features, requires_grad)
 
 
 class SubSamplePerceptualCriterion(MobilePerceptualCriterion):
-    def __init__(self, weight = 1e-3):
-        super(SubSamplePerceptualCriterion, self).__init__()
-        self.features = SubSampleExtractor()
+    def __init__(self, dimension):
+        super(SubSamplePerceptualCriterion, self).__init__(dimension)
+        self.features = SubSampleExtractor(dimension)
         self.features.eval()
         self.features.to(self.device)

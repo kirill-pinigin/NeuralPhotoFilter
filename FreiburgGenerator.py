@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torchvision import models
 
-from NeuralBlocks import BaseBlock,  ConvLayer, UpsampleDeConv
+from NeuralBlocks import BaseBlock, ConvLayer, UpsampleDeConv
 
 LATENT_SPACE   = int(64)
 
@@ -304,27 +304,4 @@ class FreiburgSingleBlock(nn.Sequential):
         super(FreiburgSingleBlock, self).__init__(
             activation,
             BaseBlock(in_size, out_size, 3, 1, activation=activation),
-        )
-
-
-class SeparableFreiburgDoubleBlock(nn.Sequential):
-    def __init__(self, in_size, out_size, activation=nn.LeakyReLU(0.2)):
-        super(SeparableFreiburgDoubleBlock, self).__init__(
-            SeparableConv2d(in_size, out_size, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(out_size),
-            activation,
-            SeparableConv2d(out_size, out_size, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(out_size),
-            activation,
-        )
-
-
-class SeparableFreiburgSingleBlock(nn.Sequential):
-    def __init__(self, in_size, out_size, activation=nn.LeakyReLU(0.2)):
-        super(SeparableFreiburgSingleBlock, self).__init__(
-            nn.BatchNorm2d(in_size),
-            activation,
-            SeparableConv2d(in_size, out_size, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(out_size),
-            activation,
         )

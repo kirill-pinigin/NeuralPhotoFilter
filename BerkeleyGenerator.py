@@ -5,6 +5,7 @@ from NeuralBlocks import BaseBlock, SimpleDecoder, SimpleEncoder, UpsampleDeConv
 
 LATENT_SPACE = int(64)
 
+
 class BerkeleyGenerator(torch.nn.Module):
     def __init__(self,dimension,  deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
         super(BerkeleyGenerator, self).__init__()

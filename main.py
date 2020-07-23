@@ -22,11 +22,11 @@ parser.add_argument('--image_size',        type = int,   default=256, help='pixe
 parser.add_argument('--image_dir',         type = str,   default='./AustoRestorerEntireDataset300/', help='path to dataset')
 parser.add_argument('--operation',         type = str,   default='Restoration', help='type of deconvolution')
 parser.add_argument('--generator',         type = str,   default='MovaviSupreme', help='type of image generator')
-parser.add_argument('--criterion',         type = str,   default='MobileImproving', help='type of criterion')
+parser.add_argument('--criterion',         type = str,   default='SpectralPAN', help='type of criterion')
 parser.add_argument('--deconv',            type = str,   default='Upsample', help='type of deconv')
 parser.add_argument('--activation',        type = str,   default='Leaky', help='type of activation')
 parser.add_argument('--optimizer',         type = str,   default='Adam', help='type of optimizer')
-parser.add_argument('--batch_size',        type = int,   default=128)
+parser.add_argument('--batch_size',        type = int,   default=256)
 parser.add_argument('--epochs',            type = int,   default=256)
 parser.add_argument('--resume_train',      type = bool,  default=True)
 
@@ -118,7 +118,6 @@ deconvolution_dataset = operation_types[args.operation]
 
 augmentations = {'train' : True, 'val' : False}
 shufles = {'train' : True, 'val' : False}
-batch_sizes = {'train' : args.batch_size, 'val' : args.batch_size if args.batch_size < 16 else 16}
 batch_sizes = {'train' : args.batch_size, 'val' : args.batch_size }
 
 image_datasets = {x: deconvolution_dataset(args.dimension, args.image_size, os.path.join(args.image_dir, x),  augmentation = augmentations[x])

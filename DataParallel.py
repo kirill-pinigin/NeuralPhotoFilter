@@ -1,4 +1,3 @@
-
 import threading
 import functools
 import torch
@@ -10,13 +9,9 @@ from torch.nn.parallel._functions import Broadcast
 
 torch_ver = torch.__version__[:3]
 
-__all__ = ['allreduce', 'DataParallelModel', 'DataParallelCriterion',
-           'patch_replication_callback']
+__all__ = ['allreduce', 'DataParallelModel', 'DataParallelCriterion', 'DataParallelCriterion', 'patch_replication_callback']
 
 def allreduce(*inputs):
-    """Cross GPU all reduce autograd operation for calculate mean and
-    variance in SyncBN.
-    """
     return AllReduce.apply(*inputs)
 
 class AllReduce(Function):
@@ -26,7 +21,6 @@ class AllReduce(Function):
         ctx.target_gpus = [inputs[i].get_device() for i in range(0, len(inputs), num_inputs)]
         inputs = [inputs[i:i + num_inputs]
                  for i in range(0, len(inputs), num_inputs)]
-        # sort before reduce sum
         inputs = sorted(inputs, key=lambda i: i[0].get_device())
         results = comm.reduce_add_coalesced(inputs, ctx.target_gpus[0])
         outputs = comm.broadcast_coalesced(results, ctx.target_gpus)
@@ -113,7 +107,6 @@ def _criterion_parallel_apply(modules, inputs, targets, kwargs_tup=None, devices
             device = get_a_var(input).get_device()
         try:
             with torch.cuda.device(device):
-                # this also avoids accidental slicing of `input` if it is a Tensor
                 if not isinstance(input, (list, tuple)):
                     input = (input,)
                 if not isinstance(target, (list, tuple)):

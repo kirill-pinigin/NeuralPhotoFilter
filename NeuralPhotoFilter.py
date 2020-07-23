@@ -118,20 +118,22 @@ class NeuralPhotoFilter(object):
                     self.optimizerG.zero_grad()
                     self.optimizerD.zero_grad()
                     outputs = self.generator(inputs)
-                    lossG, lossD = self.criterion(outputs, targets)
                     acc = self.accuracy(outputs, targets)  # .mean()
 
                     if phase == 'train':
+                        lossG, lossD = self.criterion(outputs, targets)
                         lossG.backward()
                         self.optimizerG.step()
                         lossD.backward()
                         self.optimizerD.step()
+                        running_lossG += lossG.mean() * inputs.size(0)
+                        running_lossD += lossD.mean() * inputs.size(0)
 
                     if phase == 'val':
-                        self.display(inputs, outputs, targets, float(acc.mean()), epoch)
+                        self.display(outputs, float(acc.mean()), epoch)
+                        running_lossG = float('NaN')
+                        running_lossD = float('NaN')
 
-                    running_lossG += lossG.mean() * inputs.size(0)
-                    running_lossD += lossD.mean() * inputs.size(0)
                     running_corrects += acc.mean() * inputs.size(0)
 
                 epoch_lossG = float(running_lossG) / float(len(dataloaders[phase].dataset))
@@ -171,7 +173,6 @@ class NeuralPhotoFilter(object):
         counter = 0
         self.load(modelPath)
         since = time.time()
-        running_loss = 0.0
         running_corrects = 0
         path = self.images + '/test/'
         os.makedirs(path)
@@ -181,7 +182,6 @@ class NeuralPhotoFilter(object):
             inputs, targets = data[0], data[1]
             inputs, targets = Variable(inputs.to(self.device)), Variable(targets.to(self.device))
             outputs = self.generator(inputs)
-            loss,_ = self.criterion(outputs, targets)
             acc = self.accuracy(outputs, targets)
             metric = float(acc.item())
             counter = counter + 1
@@ -198,28 +198,24 @@ class NeuralPhotoFilter(object):
                 torchvision.utils.save_image(result, path + "Input_DeepNeural_Target_" + str(counter) + '_SSIM=' + str(
                     "{0:.2f}".format(metric)) + '.png', nrow=inputs.size(0))
 
-            running_loss += loss.item() * inputs.size(0)
             running_corrects += acc.item() * inputs.size(0)
 
-        epoch_loss = float(running_loss) / float(len(test_loader.dataset))
         epoch_acc = float(running_corrects) / float(len(test_loader.dataset))
 
         time_elapsed = time.time() - since
 
         print('Evaluating complete in {:.0f}m {:.0f}s'.format(
             time_elapsed // 60, time_elapsed % 60))
-        print('Loss: {:.4f} Accuracy {:.4f} '.format( epoch_loss, epoch_acc))
+        print(' Accuracy {:.4f} '.format(epoch_acc))
 
     def save(self, type):
-        model = self.generator.module
-        model = model.cpu()
-        model.eval()
+        self.generator.module.to("cpu")
         x = Variable(torch.zeros(1, self.DIMENSION, self.IMAGE_SIZE, self.IMAGE_SIZE))
         path = self.modelPath + "/" + str(self.generator.module.__class__.__name__) + str(self.generator.module.deconv1.__class__.__name__) + str(self.generator.module.activation.__class__.__name__)
         source = "Color" if self.DIMENSION == 3 else "Gray"
         dest =  "2Color" if self.DIMENSION == 3 else "2Gray"
-        torch_out = torch.onnx._export(model, x, path + source + dest + str(self.IMAGE_SIZE)+ "_" + type + ".onnx", export_params=True)
-        torch.save(model.state_dict(), path + "_" + type  + ".pth")
+        torch_out = torch.onnx._export(self.generator.module, x, path + source + dest + str(self.IMAGE_SIZE)+ "_" + type + ".onnx", export_params=True)
+        torch.save(self.generator.module.state_dict(), path + "_" + type  + ".pth")
         self.generator.module.to(self.device)
 
     def load(self, modelPath=None):
@@ -232,16 +228,16 @@ class NeuralPhotoFilter(object):
                 self.generator.module.load_state_dict(torch.load(path + '_Best.pth'))
                 print('load Best generator ')
 
-    def display(self, inputs, outputs, targets, metric, epoch):
+    def display(self, outputs, metric, epoch):
         path = self.images + '/epoch' + str(epoch) + '/'
         flag = os.path.exists(path)
         if flag != True:
             os.makedirs(path)
             self.iteration = 0
-        self.iteration = self.iteration + 1
 
         for i in range(len(outputs)):
-            torchvision.utils.save_image(outputs[i].data, path + "Input_OutPut_Target_" + str(self.iteration) + '_SSIM=' + str("{0:.2f}".format(metric)) + '.jpg', nrow=8)
+            self.iteration = self.iteration + 1
+            torchvision.utils.save_image(outputs[i].data, path + "Input_OutPut_Target_" + str(self.iteration) + '_SSIM=' + str("{0:.2f}".format(metric)) + '.jpg')
 
     def process(self, image_dir, modelPath=None):
         c = 0

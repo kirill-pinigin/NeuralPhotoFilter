@@ -8,7 +8,6 @@ import torch
 from torch.autograd import Variable
 import torchvision
 import shutil
-import numpy as np
 
 from Dataset import  load_image, is_image_file
 from DataParallel import  DataParallelCriterion , DataParallelModel, DataParallelMetric
@@ -18,10 +17,10 @@ TRYING_LR = 3
 DEGRADATION_TOLERANCY = 7
 ACCURACY_TRESHOLD = float(0.0625)
 ITERATION_LIMIT = int(1e6)
-DISPLAY_LENGTH = 8
+
 
 class NeuralPhotoFilter(object):
-    def __init__(self, generator,  criterion, accuracy, dimension=1, image_size=256):
+    def __init__(self, generator,  criterion, accuracy, dimension, image_size):
         self.cudas = list(range(torch.cuda.device_count()))
         self.generator = DataParallelModel(generator, device_ids=self.cudas, output_device=self.cudas)
         self.criterion = DataParallelCriterion(criterion, device_ids=self.cudas, output_device=self.cudas)
@@ -31,8 +30,8 @@ class NeuralPhotoFilter(object):
         self.criterion.to(self.device)
         self.accuracy.to(self.device)
 
-        self.DIMENSION = dimension
-        self.IMAGE_SIZE= image_size
+        self.dimension = dimension
+        self.image_size= image_size
 
         self.optimizerG = torch.optim.Adam(self.generator.module.parameters(), lr = LEARNING_RATE)
         self.optimizerD = torch.optim.Adam(self.criterion.module.discriminator.parameters(), lr = LEARNING_RATE)
@@ -115,12 +114,12 @@ class NeuralPhotoFilter(object):
                     inputs, targets = data[0], data[1]
                     inputs = Variable(inputs.to(self.device))
                     targets = Variable(targets.to(self.device))
-                    self.optimizerG.zero_grad()
-                    self.optimizerD.zero_grad()
                     outputs = self.generator(inputs)
                     acc = self.accuracy(outputs, targets)  # .mean()
 
                     if phase == 'train':
+                        self.optimizerG.zero_grad()
+                        self.optimizerD.zero_grad()
                         lossG, lossD = self.criterion(outputs, targets)
                         lossG.backward()
                         self.optimizerG.step()
@@ -210,11 +209,11 @@ class NeuralPhotoFilter(object):
 
     def save(self, type):
         self.generator.module.to("cpu")
-        x = Variable(torch.zeros(1, self.DIMENSION, self.IMAGE_SIZE, self.IMAGE_SIZE))
+        x = Variable(torch.zeros(1, self.dimension, self.image_size, self.image_size))
         path = self.modelPath + "/" + str(self.generator.module.__class__.__name__) + str(self.generator.module.deconv1.__class__.__name__) + str(self.generator.module.activation.__class__.__name__)
-        source = "Color" if self.DIMENSION == 3 else "Gray"
-        dest =  "2Color" if self.DIMENSION == 3 else "2Gray"
-        torch_out = torch.onnx._export(self.generator.module, x, path + source + dest + str(self.IMAGE_SIZE)+ "_" + type + ".onnx", export_params=True)
+        source = "Color" if self.dimension == 3 else "Gray"
+        dest =  "2Color" if self.dimension == 3 else "2Gray"
+        torch_out = torch.onnx._export(self.generator.module, x, path + source + dest + str(self.image_size)+ "_" + type + ".onnx", export_params=True)
         torch.save(self.generator.module.state_dict(), path + "_" + type  + ".pth")
         self.generator.module.to(self.device)
 

@@ -12,21 +12,21 @@ from Dataset import  DeblurDataset, DenoiseDataset, Image2ImageDataset, Coloriza
 from FreiburgGenerator import FreiburgGenerator, FreiburgResidualGenerator, FreiburgSupremeGenerator, FreiburgSqueezeGenerator
 from MovaviGenerator import MovaviGenerator, MovaviFastGenerator,  MovaviResidualGenerator, MovaviStrongGenerator, MovaviSupremeGenerator
 from NeuralBlocks import SILU, UpsampleDeConv, TransposedDeConv, PixelDeConv
-from AdaptivePerceptualCriterion import AdaptivePerceptualCriterion, SqueezeAdaptivePerceptualCriterion, SpectralAdaptivePerceptualCriterion, WassersteinAdaptivePerceptualCriterion
+from AdaptivePerceptualCriterion import AdaptivePerceptualCriterion, ResidualAdaptivePerceptualCriterion, SpectralAdaptivePerceptualCriterion, WassersteinAdaptivePerceptualCriterion
 from SSIM import SSIM
 from StanfordGenerator import   StanfordGenerator, StanfordFastGenerator,  StanfordModernGenerator,  StanfordStrongGenerator, StanfordSupremeGenerator
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dimension',         type = int,   default=1, help='must be equal 1 for grayscale or 3 for RGB')
+parser.add_argument('--dimension',         type = int,   default=3, help='must be equal 1 for grayscale or 3 for RGB')
 parser.add_argument('--image_size',        type = int,   default=256, help='pixel size of square image')
-parser.add_argument('--image_dir',         type = str,   default='./AustoRestorerEntireDataset300/', help='path to dataset')
-parser.add_argument('--operation',         type = str,   default='Restoration', help='type of deconvolution')
+parser.add_argument('--image_dir',         type = str,   default='./DF2KDataset600/', help='path to dataset')
+parser.add_argument('--operation',         type = str,   default='Upscaling', help='type of deconvolution')
 parser.add_argument('--generator',         type = str,   default='MovaviSupreme', help='type of image generator')
-parser.add_argument('--criterion',         type = str,   default='SpectralPAN', help='type of criterion')
+parser.add_argument('--criterion',         type = str,   default='Chroma', help='type of criterion')
 parser.add_argument('--deconv',            type = str,   default='Upsample', help='type of deconv')
 parser.add_argument('--activation',        type = str,   default='Leaky', help='type of activation')
 parser.add_argument('--optimizer',         type = str,   default='Adam', help='type of optimizer')
-parser.add_argument('--batch_size',        type = int,   default=256)
+parser.add_argument('--batch_size',        type = int,   default=128)
 parser.add_argument('--epochs',            type = int,   default=256)
 parser.add_argument('--resume_train',      type = bool,  default=True)
 
@@ -51,7 +51,7 @@ criterion_types =   {
                         'Wasserstein'           : WassersteinAdversarialCriterion,
                         'PAN'                   : AdaptivePerceptualCriterion,
                         'SpectralPAN'           : SpectralAdaptivePerceptualCriterion,
-                        'SqueezeAdaptive'       : SqueezeAdaptivePerceptualCriterion,
+                        'ResidualAdaptive'       : ResidualAdaptivePerceptualCriterion,
                         'WassersteinAdaptive'   : WassersteinAdaptivePerceptualCriterion,
                     }
 
@@ -130,6 +130,6 @@ imageloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=bat
 test_dataset = deconvolution_dataset(args.dimension, args.image_size, args.image_dir+'/val/',  augmentation = False)
 testloader = torch.utils.data.DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=4)
 
-framework = NeuralPhotoFilter(generator = generator, criterion = criterion, accuracy=accuracy)
+framework = NeuralPhotoFilter(generator = generator, criterion = criterion, accuracy=accuracy, dimension=args.dimension, image_size=args.image_size)
 framework.approximate(dataloaders = imageloaders, num_epochs=args.epochs, resume_train=args.resume_train)
 framework.estimate(testloader)

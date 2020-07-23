@@ -97,7 +97,7 @@ class DistortDataset(data.Dataset):
                     self.images.append(filepath)
 
     def __getitem__(self, index):
-        target = load_image(self.images[index],  self.dmension, self.image_size, self.augmentation)
+        target = load_image(self.images[index],  self.dimension, self.image_size, self.augmentation)
 
         if self.augmentation is not None:
             target = self.augmentation(target)
@@ -173,73 +173,7 @@ class ColorizationDataset(DistortDataset):
 class UpscalingDataset(DeblurDataset):
     def __init__(self, dimension, image_size, image_dir, augmentation):
         super(UpscalingDataset, self).__init__(dimension, image_size, image_dir, augmentation)
-        self.distorter = transforms.Compose([RandomResize()])
-
-
-class PhotoJitter(object):
-    def __init__(self, brightness = 0.2, color=0.4, contrast = 0.3, gamma = 0.5, sharpness = 1.0):
-        self.brightness = [1.0 - brightness, 1.0 + brightness]
-        self.color = [1.0 - color, 1.0 + color]
-        self.contrast = [1.0 - contrast, 1.0 + contrast]
-        self.gamma = [1.0 - gamma, 1.0 + gamma]
-        self.sharpness = [0.0, sharpness]
-
-    def __call__(self, img):
-        transforms = []
-
-        brightness_factor = random.uniform(self.brightness[0], self.brightness[1])
-        transforms.append(Lambda(lambda img: self.adjust_brightness(img, brightness_factor)))
-
-        color_factor = random.uniform(self.color[0], self.color[1])
-        transforms.append(Lambda(lambda img: self.adjust_color(img, color_factor)))
-
-        contrast_factor = random.uniform(self.contrast[0], self.contrast[1])
-        transforms.append(Lambda(lambda img: self.adjust_contrast(img, contrast_factor)))
-
-        gamma_factor = random.uniform(self.gamma[0], self.gamma[1])
-        transforms.append(Lambda(lambda img: self.adjust_gamma(img, gamma_factor)))
-
-        sharpness_factor = random.uniform(self.sharpness[0], self.sharpness[1])
-        transforms.append(Lambda(lambda img: self.adjust_sharpness(img, sharpness_factor)))
-
-        random.shuffle(transforms)
-        transform = torchvision.transforms.Compose(transforms)
-        return transform(img)
-
-    def __repr__(self):
-        format_string = self.__class__.__name__ + '('
-        format_string += 'brightness={0}'.format(self.brightness)
-        format_string += ', contrast={0}'.format(self.contrast)
-        format_string += ', sharpness={0}'.format(self.sharpness)
-        return format_string
-
-    def adjust_brightness(self, img, brightness_factor):
-        enhancer = ImageEnhance.Brightness(img)
-        img = enhancer.enhance(brightness_factor)
-        return img
-
-    def adjust_color(self, img, color_factor):
-        enhancer = ImageEnhance.Color(img)
-        img = enhancer.enhance(color_factor)
-        return img
-
-    def adjust_contrast(self, img, contrast_factor):
-        enhancer = ImageEnhance.Contrast(img)
-        img = enhancer.enhance(contrast_factor)
-        return img
-
-    def adjust_gamma(self, image, gamma=1.0):
-        image = np.array(image)
-        invGamma = 1.0 / gamma
-        table = np.array([((i / 255.0) ** invGamma) * 255
-                    for i in np.arange(0, 256)]).astype("uint8")
-
-        return  Image.fromarray(cv2.LUT(image, table))
-
-    def adjust_sharpness(self, img, sharpness_factor):
-        enhancer = ImageEnhance.Sharpness(img)
-        img = enhancer.enhance(sharpness_factor)
-        return img
+        self.distorter = transforms.Compose([RandomResize(image_size)])
 
 
 class RandomBlur(object):
@@ -260,7 +194,6 @@ class RandomNoise(object):
     def __init__(self):
         self.sigmas = [14, 15]
         self.random_state= np.random.RandomState(42)
-
 
     def __call__(self, img):
         transforms = []
@@ -435,15 +368,16 @@ class RandomNoise(object):
 
 
 class RandomResize(object):
-    def __init__(self):
-        self.factors = [1, 5]
+    def __init__(self, image_size):
         random.seed(42)
+        self.image_size = image_size
 
     def __call__(self, input):
         factor = random.randint(2, 12)
         factor *= 0.5
-        image = torchvision.transforms.functional.resize(input, (int(IMAGE_SIZE / factor), int(IMAGE_SIZE / factor)), Image.BICUBIC)
-        result = torchvision.transforms.functional.resize(image, (int(IMAGE_SIZE), int(IMAGE_SIZE)), Image.BICUBIC)
+        factor = 2
+        image = torchvision.transforms.functional.resize(input, (int(self.image_size / factor), int(self.image_size / factor)), Image.BICUBIC)
+        result = torchvision.transforms.functional.resize(image, (int(self.image_size), int(self.image_size)), Image.BICUBIC)
         return result
 
     def __repr__(self):

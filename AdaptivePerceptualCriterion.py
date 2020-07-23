@@ -4,7 +4,7 @@ from torchvision import models
 from torch.autograd import Variable
 import random
 
-from NeuralBlocks import  SpectralNorm, Flatten
+from NeuralBlocks import  SpectralNorm
 from PerceptualCriterion import SQUEEZENET_CONFIG, BasicMultiFeatureExtractor
 
 def compute_gram_matrix(x):
@@ -59,7 +59,6 @@ class PerceptualDiscriminator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(8, 1, 1, 1, 0, bias=False),
             nn.Sigmoid(),
-            Flatten(),
         )
 
     def forward(self, x):
@@ -109,7 +108,7 @@ class AdaptivePerceptualCriterion(nn.Module):
 
     def update(self, actual, desire):
         self.discriminator.train()
-        ploss, fake, real = self.featurize(actual, desire)
+        ploss, fake, real = self.featurize(actual.detach(), desire.detach())
         zeros = Variable(torch.zeros(fake.shape).to(actual.device))
         ones = Variable(torch.ones(real.shape).to(actual.device))
         self.lossD = self.bce(real, ones) + self.bce(fake, zeros) + self.relu(self.margin - ploss).mean()
@@ -118,7 +117,7 @@ class AdaptivePerceptualCriterion(nn.Module):
 
 class ResidualDiscriminator(PerceptualDiscriminator):
     def __init__(self, dimension):
-        super(ResidualDiscriminator, self).__init__()
+        super(ResidualDiscriminator, self).__init__(dimension)
         base_model = models.resnet18(pretrained=True)
         conv = nn.Conv2d(dimension, 64, kernel_size=7, stride=2, padding=3, bias=False)
 
@@ -154,26 +153,13 @@ class ResidualDiscriminator(PerceptualDiscriminator):
         enc3 = self.encoder3(enc2)
         enc4 = self.encoder4(enc3)
         result = self.predictor(enc4)
-        return enc1, enc2, enc3, enc4, result
+        return [enc1, enc2, enc3, enc4], result
 
 
 class ResidualAdaptivePerceptualCriterion(AdaptivePerceptualCriterion):
     def __init__(self, dimension):
-        super(ResidualAdaptivePerceptualCriterion, self).__init__()
+        super(ResidualAdaptivePerceptualCriterion, self).__init__(dimension)
         self.discriminator = ResidualDiscriminator(dimension)
-
-
-class SqueezeExtractor(BasicMultiFeatureExtractor):
-    def __init__(self, dimension, requires_grad=False):
-        super(SqueezeExtractor, self).__init__(dimension, SQUEEZENET_CONFIG, requires_grad)
-
-
-class SqueezeAdaptivePerceptualCriterion(ResidualAdaptivePerceptualCriterion):
-    def __init__(self, dimension):
-        super(SqueezeAdaptivePerceptualCriterion, self).__init__(dimension)
-        self.features = SqueezeExtractor(dimension, requires_grad=True)
-        self.features.to(self.device)
-        self.predictor.to(self.device)
 
 
 class SpectralDiscriminator(PerceptualDiscriminator):
@@ -209,7 +195,6 @@ class SpectralDiscriminator(PerceptualDiscriminator):
 
         self.predictor = torch.nn.Sequential(
             SpectralNorm(nn.Conv2d(8, 1, 1, 1, 0, bias=False)),
-            Flatten(),
         )
 
 
@@ -221,14 +206,14 @@ class SpectralAdaptivePerceptualCriterion(AdaptivePerceptualCriterion):
 
     def update(self, actual, desire):
         self.discriminator.train()
-        ploss, fake, real = self.featurize(actual, desire)
-        self.LossD = self.feat(1.0 - real).mean() + self.feat(1.0 + fake).mean() + self.feat(self.margin - ploss).mean()
+        ploss, fake, real = self.featurize(actual.detach(), desire.detach())
+        self.LossD = self.relu(1.0 - real).mean() + self.relu(1.0 + fake).mean() + self.relu(self.margin - ploss).mean()
         return self.LossD
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()
-        actual_features, _, ploss = self.featurize(actual, desire)
-        self.lossG = ploss - self.predictor(actual_features[-1]).view(-1).mean() + self.distance(actual, desire)
+        ploss, result, _ = self.featurize(actual, desire)
+        self.lossG = ploss - result.view(-1).mean() + self.distance(actual, desire)
         return self.lossG
 
 
@@ -244,7 +229,7 @@ class WassersteinAdaptivePerceptualCriterion(SpectralAdaptivePerceptualCriterion
 
     def update(self, actual, desire):
         self.discriminator.train()
-        ploss, fake, real = self.featurize(actual, desire)
+        ploss, fake, real = self.featurize(actual.detach(), desire.detach())
         wgan_loss = fake.mean() - real.mean()
         alpha = float(random.uniform(0, 1))
         interpolates  = alpha * desire + (1 - alpha) * actual

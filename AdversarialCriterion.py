@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import random
 
-from NeuralBlocks import  SpectralNorm, TotalVariation, HueSaturationValueCriterion, Flatten
+from NeuralBlocks import  SpectralNorm, TotalVariation, HueSaturationValueCriterion
 from PyramidCriterion import PyramidCriterion
 from PerceptualCriterion import  ChromaEdgePerceptualCriterion, FastNeuralStylePerceptualCriterion , EchelonPerceptualCriterion, MobilePerceptualCriterion, SubSamplePerceptualCriterion, SharpPerceptualCriterion , SigmaPerceptualCriterion, SimplePerceptualCriterion
 from SSIM import SSIMCriterion
@@ -30,7 +30,6 @@ class AdversarialCriterion(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
 
             nn.Conv2d(in_channels=512, out_channels=1, kernel_size=4, stride=1, padding=1, bias=False),
-            Flatten(),
             nn.Sigmoid(),
         )
 
@@ -47,16 +46,16 @@ class AdversarialCriterion(nn.Module):
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()
-        result = self.discriminator(actual)
+        result = self.discriminator(actual).view(-1)
         ones = Variable(torch.ones(result.shape).to(actual.device))
         self.lossG = self.perceptualizer(actual, desire) + self.weight * self.bce(result, ones)
         return self.lossG
 
     def update(self, actual, desire):
         self.discriminator.train()
-        real = self.discriminator(desire.detach())
+        real = self.discriminator(desire.detach()).view(-1)
         ones = Variable(torch.ones(real.shape).to(actual.device))
-        fake = self.discriminator(actual.detach())
+        fake = self.discriminator(actual.detach()).view(-1)
         zeros = Variable(torch.zeros(fake.shape).to(actual.device))
         self.lossD = self.bce(real, ones) + self.bce(fake, zeros)
         return  self.lossD
@@ -139,7 +138,7 @@ class PatchAdversarialCriterion(AdversarialCriterion):
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()
-        rest =self.discriminator(actual)
+        rest =self.discriminator(actual).view(-1)
         ones = Variable(torch.ones(rest.shape).to(actual.device))
         self.lossG = 1e2*self.perceptualizer(actual, desire) + self.bce(rest, ones)
         return self.lossG
@@ -149,7 +148,7 @@ class PatchColorAdversarialCriterion(PatchAdversarialCriterion):
     def __init__(self, dimension,):
         super(PatchColorAdversarialCriterion, self).__init__(dimension)
         self.perceptualizer = HueSaturationValueCriterion()
-        self.chroma_edge = ChromaEdgePerceptualCriterion()
+        self.chroma_edge = ChromaEdgePerceptualCriterion(dimension)
 
     def evaluate(self, actual, desire):
         self.lossG = super(PatchColorAdversarialCriterion, self).evaluate(actual, desire) \
@@ -181,7 +180,6 @@ class SpectralAdversarialCriterion(AdversarialCriterion):
             nn.LeakyReLU(0.2, inplace=True),
 
             nn.Conv2d(in_channels=512, out_channels=1, kernel_size=4, stride=1, padding=1, bias=False),
-            Flatten(),
         )
 
         self.relu = nn.ReLU()
@@ -222,7 +220,6 @@ class WassersteinAdversarialCriterion(AdversarialCriterion):
             nn.LeakyReLU(0.2, inplace=True),
 
             nn.Conv2d(in_channels=512, out_channels=1, kernel_size=4, stride=1, padding=1, bias=False),
-            Flatten(),
         )
 
     def evaluate(self, actual, desire):

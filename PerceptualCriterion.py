@@ -179,7 +179,7 @@ class ChromaEdgePerceptualCriterion(nn.Module):
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.cudas = list(range(torch.cuda.device_count()))
         self.features.to(self.device)
-        self.distance = nn.MSECriterion()
+        self.distance = nn.MSELoss()
         self.factors = [1.0, 1.0/2.0, 1.0/3.0, 1.0/4.0]
 
     def forward(self, actual, desire):

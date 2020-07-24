@@ -17,16 +17,16 @@ from SSIM import SSIM
 from StanfordGenerator import   StanfordGenerator, StanfordFastGenerator,  StanfordModernGenerator,  StanfordStrongGenerator, StanfordSupremeGenerator
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dimension',         type = int,   default=3, help='must be equal 1 for grayscale or 3 for RGB')
-parser.add_argument('--image_size',        type = int,   default=256, help='pixel size of square image')
-parser.add_argument('--image_dir',         type = str,   default='./DF2KDataset600/', help='path to dataset')
-parser.add_argument('--operation',         type = str,   default='Upscaling', help='type of deconvolution')
+parser.add_argument('--dimension',         type = int,   default=1, help='must be equal 1 for grayscale or 3 for RGB')
+parser.add_argument('--image_size',        type = int,   default=224, help='pixel size of square image')
+parser.add_argument('--image_dir',         type = str,   default='./AustoRestorerEntireDataset300/', help='path to dataset')
+parser.add_argument('--operation',         type = str,   default='Restoration', help='type of deconvolution')
 parser.add_argument('--generator',         type = str,   default='MovaviSupreme', help='type of image generator')
-parser.add_argument('--criterion',         type = str,   default='Chroma', help='type of criterion')
+parser.add_argument('--criterion',         type = str,   default='MobileImproving', help='type of criterion')
 parser.add_argument('--deconv',            type = str,   default='Upsample', help='type of deconv')
 parser.add_argument('--activation',        type = str,   default='Leaky', help='type of activation')
 parser.add_argument('--optimizer',         type = str,   default='Adam', help='type of optimizer')
-parser.add_argument('--batch_size',        type = int,   default=128)
+parser.add_argument('--batch_size',        type = int,   default=256)
 parser.add_argument('--epochs',            type = int,   default=256)
 parser.add_argument('--resume_train',      type = bool,  default=True)
 
@@ -51,7 +51,7 @@ criterion_types =   {
                         'Wasserstein'           : WassersteinAdversarialCriterion,
                         'PAN'                   : AdaptivePerceptualCriterion,
                         'SpectralPAN'           : SpectralAdaptivePerceptualCriterion,
-                        'ResidualAdaptive'       : ResidualAdaptivePerceptualCriterion,
+                        'ResidualAdaptive'      : ResidualAdaptivePerceptualCriterion,
                         'WassersteinAdaptive'   : WassersteinAdaptivePerceptualCriterion,
                     }
 
@@ -108,6 +108,7 @@ optimizer_types =   {
                         'RMSprop': optim.RMSprop,
                         'SGD'    : optim.SGD
                     }
+
 accuracy = SSIM(args.dimension)
 model = generator_types[args.generator]
 deconvLayer = (deconv_types[args.deconv] if args.deconv in deconv_types else deconv_types['upsample'])
@@ -116,7 +117,7 @@ generator = model(dimension=args.dimension, deconv=deconvLayer, activation=funct
 criterion = criterion_types[args.criterion](dimension=args.dimension)
 deconvolution_dataset = operation_types[args.operation]
 
-augmentations = {'train' : True, 'val' : False}
+augmentations = {'train' : False, 'val' : False}
 shufles = {'train' : True, 'val' : False}
 batch_sizes = {'train' : args.batch_size, 'val' : args.batch_size }
 

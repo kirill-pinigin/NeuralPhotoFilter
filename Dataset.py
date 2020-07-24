@@ -39,7 +39,7 @@ class Image2ImageDataset(data.Dataset):
         self.image_size = image_size
         self.augmentation = augmentation
         self.deprocess = False
-        self.distorter = transforms.Compose([RandomSharp()])
+        #self.distorter = transforms.Compose([RandomSharp()])
         transforms_list = [
             DualResize(image_size),
             DualToTensor(),
@@ -60,7 +60,8 @@ class Image2ImageDataset(data.Dataset):
     def __getitem__(self, index):
         input = load_image(self.inputs[index], self.dimension,  self.image_size, self.augmentation)
         target = load_image(self.targets[index], self.dimension,  self.image_size, self.augmentation)
-        input, target = self.transforms(self.distorter(input), target)
+        #input, target = self.transforms(self.distorter(input), target)
+        input, target = self.transforms(input, target)
         return input, target
 
     def __len__(self):

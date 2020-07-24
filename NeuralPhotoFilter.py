@@ -36,7 +36,7 @@ class NeuralPhotoFilter(object):
         self.optimizerG = torch.optim.Adam(self.generator.module.parameters(), lr = LEARNING_RATE)
         self.optimizerD = torch.optim.Adam(self.criterion.module.discriminator.parameters(), lr = LEARNING_RATE)
         self.schedulerG = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizerG, mode='max', factor=0.1, patience=6, verbose=True, min_lr=LR_THRESHOLD)
-        self.schedulerD = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizerD, mode='min', factor=0.1, patience=6, verbose=True, min_lr=LR_THRESHOLD)
+        self.schedulerD = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizerD, mode='min', factor=0.2, patience=6, verbose=True, min_lr=LR_THRESHOLD)
 
         self.iteration = int(0)
         self.tensoration = torchvision.transforms.ToTensor()
@@ -112,10 +112,10 @@ class NeuralPhotoFilter(object):
                 
                 for data in dataloaders[phase]:
                     inputs, targets = data[0], data[1]
-                    inputs = Variable(inputs.to(self.device))
+                    inputs  = Variable(inputs.to(self.device))
                     targets = Variable(targets.to(self.device))
                     outputs = self.generator(inputs)
-                    acc = self.accuracy(outputs, targets)  # .mean()
+                    acc = self.accuracy(outputs, targets)
 
                     if phase == 'train':
                         self.optimizerG.zero_grad()
@@ -130,8 +130,10 @@ class NeuralPhotoFilter(object):
 
                     if phase == 'val':
                         self.display(outputs, float(acc.mean()), epoch)
-                        running_lossG = float('NaN')
-                        running_lossD = float('NaN')
+                        with torch.no_grad():
+                            lossG, lossD = self.criterion(outputs, targets)
+                            running_lossG += lossG.mean() * inputs.size(0)
+                            running_lossD += lossD.mean() * inputs.size(0)
 
                     running_corrects += acc.mean() * inputs.size(0)
 
@@ -142,24 +144,24 @@ class NeuralPhotoFilter(object):
                 _stdout = sys.stdout
                 sys.stdout = self.report
                 print('{} Loss: {:.4f} Accuracy  {:.4f} '.format(
-                    phase, epoch_lossG, epoch_acc))
+                    phase, epoch_lossD, epoch_acc))
                 self.report.flush()
 
                 sys.stdout = _stdout
                 print('{} Loss: {:.4f} Accuracy  {:.4f} '.format(
-                    phase, epoch_lossG, epoch_acc))
+                    phase, epoch_lossD, epoch_acc))
                 self.report.flush()
 
                 if phase == 'val':
-                        self.schedulerG.step(epoch_acc)
-                        self.schedulerD.step(epoch_lossD)
+                    self.schedulerG.step(epoch_acc)
+                    self.schedulerD.step(epoch_lossD)
 
-                        if epoch_acc > best_acc:
-                            best_acc = epoch_acc
-                            print('curent best_loss ', best_acc)
-                            self.save('Best')
-                        else:
-                            self.save('Regular')
+                    if epoch_acc > best_acc:
+                        best_acc = epoch_acc
+                        print('curent best_loss ', best_acc)
+                        self.save('Best')
+                    else:
+                        self.save('Regular')
 
         time_elapsed = time.time() - since
 

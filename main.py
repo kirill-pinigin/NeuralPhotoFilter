@@ -117,19 +117,18 @@ generator = model(dimension=args.dimension, deconv=deconvLayer, activation=funct
 criterion = criterion_types[args.criterion](dimension=args.dimension)
 deconvolution_dataset = operation_types[args.operation]
 
-augmentations = {'train' : False, 'val' : False}
+augmentations = {'train' : True, 'val' : False}
 shufles = {'train' : True, 'val' : False}
-batch_sizes = {'train' : args.batch_size, 'val' : args.batch_size }
 
 image_datasets = {x: deconvolution_dataset(args.dimension, args.image_size, os.path.join(args.image_dir, x),  augmentation = augmentations[x])
                     for x in ['train', 'val']}
 
-imageloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=batch_sizes[x],
-                                             shuffle=shufles[x], num_workers=4)
+imageloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size,
+                                             shuffle=shufles[x], num_workers=torch.cuda.device_count())
                 for x in ['train', 'val']}
 
 test_dataset = deconvolution_dataset(args.dimension, args.image_size, args.image_dir+'/val/',  augmentation = False)
-testloader = torch.utils.data.DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=4)
+testloader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=torch.cuda.device_count())
 
 framework = NeuralPhotoFilter(generator = generator, criterion = criterion, accuracy=accuracy, dimension=args.dimension, image_size=args.image_size)
 framework.approximate(dataloaders = imageloaders, num_epochs=args.epochs, resume_train=args.resume_train)

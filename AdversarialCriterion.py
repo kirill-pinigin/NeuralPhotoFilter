@@ -35,14 +35,9 @@ class AdversarialCriterion(nn.Module):
 
         self.perceptualizer = nn.MSELoss()
         self.bce = nn.BCELoss()
-        self.lossG = torch.ones(1)
-        self.lossD = torch.ones(1)
 
     def forward(self, actual, desire):
         return  self.evaluate(actual, desire), self.update(actual, desire)
-
-    def backward(self, retain_variables=True):
-        return self.lossG.backward(retain_variables=retain_variables)
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()
@@ -57,8 +52,7 @@ class AdversarialCriterion(nn.Module):
         ones = Variable(torch.ones(real.shape).to(actual.device))
         fake = self.discriminator(actual.detach()).view(-1)
         zeros = Variable(torch.zeros(fake.shape).to(actual.device))
-        self.lossD = self.bce(real, ones) + self.bce(fake, zeros)
-        return  self.lossD
+        return self.bce(real, ones) + self.bce(fake, zeros)
 
 
 class AdversarialStyleCriterion(AdversarialCriterion):
@@ -80,10 +74,9 @@ class DSLRAdversaialCriterion(AdversarialCriterion):
         self.tv = TotalVariation()
 
     def evaluate(self, actual, desire):
-        self.lossG = super(DSLRAdversaialCriterion, self).evaluate(actual, desire) \
+        return  super(DSLRAdversaialCriterion, self).evaluate(actual, desire) \
                     + self.pyramid(actual, desire) \
                     + self.tv(actual)
-        return self.lossG
 
 
 class MobileImprovingAdversarialCriterion(AdversarialCriterion):
@@ -95,10 +88,9 @@ class MobileImprovingAdversarialCriterion(AdversarialCriterion):
         self.distance = nn.L1Loss()
 
     def evaluate(self, actual, desire):
-        self.lossG = super(MobileImprovingAdversarialCriterion, self).evaluate(actual, desire) \
+        return super(MobileImprovingAdversarialCriterion, self).evaluate(actual, desire) \
                      + self.distance(actual, desire) + self.ssim(actual, desire) \
                      + self.tv(actual)
-        return self.lossG
 
 
 class MultiSigmaCriterion(MobileImprovingAdversarialCriterion):
@@ -126,9 +118,8 @@ class ChromaAdversarialCriterion(MobileImprovingAdversarialCriterion):
         self.HSV = HueSaturationValueCriterion()
 
     def evaluate(self, actual, desire):
-        self.lossG = super(ChromaAdversarialCriterion, self).evaluate(actual, desire) \
+        return super(ChromaAdversarialCriterion, self).evaluate(actual, desire) \
                      + self.HSV(actual, desire)
-        return self.lossG
 
 
 class PatchAdversarialCriterion(AdversarialCriterion):
@@ -140,8 +131,7 @@ class PatchAdversarialCriterion(AdversarialCriterion):
         self.discriminator.eval()
         rest =self.discriminator(actual).view(-1)
         ones = Variable(torch.ones(rest.shape).to(actual.device))
-        self.lossG = 1e2*self.perceptualizer(actual, desire) + self.bce(rest, ones)
-        return self.lossG
+        return 1e2*self.perceptualizer(actual, desire) + self.bce(rest, ones)
 
 
 class PatchColorAdversarialCriterion(PatchAdversarialCriterion):
@@ -151,9 +141,8 @@ class PatchColorAdversarialCriterion(PatchAdversarialCriterion):
         self.chroma_edge = ChromaEdgePerceptualCriterion(dimension)
 
     def evaluate(self, actual, desire):
-        self.lossG = super(PatchColorAdversarialCriterion, self).evaluate(actual, desire) \
+        return super(PatchColorAdversarialCriterion, self).evaluate(actual, desire) \
                      + self.chroma_edge(actual, desire)
-        return self.lossG
 
 
 class PhotoRealisticAdversarialCriterion(AdversarialCriterion):
@@ -186,8 +175,7 @@ class SpectralAdversarialCriterion(AdversarialCriterion):
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()
-        self.lossG = 1e2*self.perceptualizer(actual, desire) - self.discriminator(actual).mean()
-        return self.lossG
+        return 1e2*self.perceptualizer(actual, desire) - self.discriminator(actual).mean()
 
     def update(self, actual, desire):
         self.discriminator.train()
@@ -195,12 +183,7 @@ class SpectralAdversarialCriterion(AdversarialCriterion):
         fake = self.discriminator(actual.detach())
         lossDreal = self.relu(1.0 - real).mean()
         lossDfake = self.relu(1.0 + fake).mean()
-        self.lossD = lossDreal + lossDfake
-        return self.lossD
-
-    def backward(self, retain_variables=True):
-        return self.lossG.backward(retain_variables=retain_variables)
-
+        return lossDreal + lossDfake
 
 class WassersteinAdversarialCriterion(AdversarialCriterion):
     def __init__(self, dimension):
@@ -224,8 +207,7 @@ class WassersteinAdversarialCriterion(AdversarialCriterion):
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()
-        self.lossG = 1e2*self.perceptualizer(actual, desire) - self.discriminator(actual).view(-1).mean()
-        return self.lossG
+        return 1e2*self.perceptualizer(actual, desire) - self.discriminator(actual).view(-1).mean()
 
     def update(self, actual, desire):
         self.discriminator.train()
@@ -244,5 +226,4 @@ class WassersteinAdversarialCriterion(AdversarialCriterion):
                                   create_graph=True)[0]
 
         gradient_penalty = ((gradients.view(gradients.size(0), -1).norm(2, dim=1) - 1) ** 2).mean()
-        self.lossD =  wgan_lossA + 1e2*gradient_penalty
-        return self.lossD
+        return wgan_lossA + 1e2*gradient_penalty

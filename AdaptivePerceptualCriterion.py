@@ -78,8 +78,6 @@ class AdaptivePerceptualCriterion(nn.Module):
         self.bce = nn.BCELoss()
         self.relu = nn.ReLU()
         self.margin = 1.0
-        self.lossG = None
-        self.lossD = None
         self.factors = [1.0, 1.0 / 2.0, 1.0 / 3.0, 1.0 / 4.0]
 
     def forward(self, actual, desire):
@@ -103,16 +101,14 @@ class AdaptivePerceptualCriterion(nn.Module):
         ploss, rest, _ = self.featurize(actual, desire)
         ones = Variable(torch.ones(rest.shape).to(actual.device))
         aloss = self.bce(rest, ones)
-        self.lossG = ploss + aloss + self.distance(actual, desire)
-        return self.lossG
+        return ploss + aloss + self.distance(actual, desire)
 
     def update(self, actual, desire):
         self.discriminator.train()
         ploss, fake, real = self.featurize(actual.detach(), desire.detach())
         zeros = Variable(torch.zeros(fake.shape).to(actual.device))
         ones = Variable(torch.ones(real.shape).to(actual.device))
-        self.lossD = self.bce(real, ones) + self.bce(fake, zeros) + self.relu(self.margin - ploss).mean()
-        return self.lossD
+        return self.bce(real, ones) + self.bce(fake, zeros) + self.relu(self.margin - ploss).mean()
 
 
 class ResidualDiscriminator(PerceptualDiscriminator):
@@ -207,14 +203,12 @@ class SpectralAdaptivePerceptualCriterion(AdaptivePerceptualCriterion):
     def update(self, actual, desire):
         self.discriminator.train()
         ploss, fake, real = self.featurize(actual.detach(), desire.detach())
-        self.LossD = self.relu(1.0 - real).mean() + self.relu(1.0 + fake).mean() + self.relu(self.margin - ploss).mean()
-        return self.LossD
+        return self.relu(1.0 - real).mean() + self.relu(1.0 + fake).mean() + self.relu(self.margin - ploss).mean()
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()
         ploss, result, _ = self.featurize(actual, desire)
-        self.lossG = ploss - result.view(-1).mean() + self.distance(actual, desire)
-        return self.lossG
+        return ploss - result.view(-1).mean() + self.distance(actual, desire)
 
 
 class WassersteinAdaptivePerceptualCriterion(SpectralAdaptivePerceptualCriterion):
@@ -224,8 +218,7 @@ class WassersteinAdaptivePerceptualCriterion(SpectralAdaptivePerceptualCriterion
     def evaluate(self, actual, desire):
         self.discriminator.eval()
         ploss, result, _ = self.featurize(actual, desire)
-        self.lossG = ploss - result.mean()
-        return self.lossG
+        return ploss - result.mean()
 
     def update(self, actual, desire):
         self.discriminator.train()
@@ -238,5 +231,4 @@ class WassersteinAdaptivePerceptualCriterion(SpectralAdaptivePerceptualCriterion
         buffer = Variable(torch.ones_like(interpolates_discriminator_out), requires_grad=True).to(actual.device)
         gradients = torch.autograd.grad(outputs=interpolates_discriminator_out, inputs=interpolates,grad_outputs=buffer, retain_graph=True, create_graph=True)[0]
         gradient_penalty = ((gradients.view(gradients.size(0), -1).norm(2, dim=1) - 1) ** 2).mean()
-        self.LossD = wgan_loss + 1e2*gradient_penalty
-        return self.LossD
+        return wgan_loss + 1e2*gradient_penalty

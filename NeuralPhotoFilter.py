@@ -114,6 +114,8 @@ class NeuralPhotoFilter(object):
                     inputs, targets = data[0], data[1]
                     inputs  = Variable(inputs.to(self.device))
                     targets = Variable(targets.to(self.device))
+                    self.optimizerG.step()
+                    self.optimizerD.step()
                     outputs = self.generator(inputs)
                     acc = self.accuracy(outputs, targets)
 
@@ -122,9 +124,7 @@ class NeuralPhotoFilter(object):
                         self.optimizerD.zero_grad()
                         lossG, lossD = self.criterion(outputs, targets)
                         lossG.backward()
-                        self.optimizerG.step()
                         lossD.backward()
-                        self.optimizerD.step()
                         running_lossG += lossG.mean() * inputs.size(0)
                         running_lossD += lossD.mean() * inputs.size(0)
 
@@ -144,12 +144,12 @@ class NeuralPhotoFilter(object):
                 _stdout = sys.stdout
                 sys.stdout = self.report
                 print('{} Loss: {:.4f} Accuracy  {:.4f} '.format(
-                    phase, epoch_lossD, epoch_acc))
+                    phase, epoch_lossG, epoch_acc))
                 self.report.flush()
 
                 sys.stdout = _stdout
                 print('{} Loss: {:.4f} Accuracy  {:.4f} '.format(
-                    phase, epoch_lossD, epoch_acc))
+                    phase, epoch_lossG, epoch_acc))
                 self.report.flush()
 
                 if phase == 'val':

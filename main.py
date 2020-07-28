@@ -22,7 +22,7 @@ parser.add_argument('--image_size',        type = int,   default=256, help='pixe
 parser.add_argument('--image_dir',         type = str,   default='./FakeRetroVintagePngDataset300/', help='path to dataset')
 parser.add_argument('--operation',         type = str,   default='Restoration', help='type of deconvolution')
 parser.add_argument('--generator',         type = str,   default='MovaviSupreme', help='type of image generator')
-parser.add_argument('--criterion',         type = str,   default='SubSample', help='type of criterion')
+parser.add_argument('--criterion',         type = str,   default='MobileImproving', help='type of criterion')
 parser.add_argument('--deconv',            type = str,   default='Upsample', help='type of deconv')
 parser.add_argument('--activation',        type = str,   default='Leaky', help='type of activation')
 parser.add_argument('--optimizer',         type = str,   default='Adam', help='type of optimizer')

@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 
-ITERATION_LIMIT = int(1e6)
-from NeuralBlocks import   HueSaturationValueCriterion
+from NeuralBlocks import HueSaturationValueCriterion
 
 
 class PyramidExtractor(nn.Module):
@@ -35,18 +34,14 @@ class PyramidCriterion(nn.Module):
         self.criterion = nn.MSELoss()
 
     def forward(self, actual, desire):
-        outputs = self.features(actual)
+        actuals = self.features(actual)
         desires = self.features(desire)
 
         loss = 0.0
-        for i in range(len(outputs)):
-            loss += self.criterion(outputs[i], desires[i])
-
-        self.loss = loss
-        return self.loss
-
-    def backward(self, retain_variables=True):
-        return self.loss.backward(retain_variables=retain_variables)
+        for i in range(len(actuals)):
+            loss += self.criterion(actuals[i], desires[i])
+        del actuals, desires
+        return loss
 
 
 class ColorPyramidCriterion(PyramidCriterion):
@@ -55,6 +50,5 @@ class ColorPyramidCriterion(PyramidCriterion):
         self.HSV = HueSaturationValueCriterion()
 
     def forward(self, actual, desire):
-        self.loss = super(ColorPyramidCriterion, self).forward(actual, desire) + self.HSV(actual, desire)
-        return self.loss
+        return super(ColorPyramidCriterion, self).forward(actual, desire) + self.HSV(actual, desire)
 

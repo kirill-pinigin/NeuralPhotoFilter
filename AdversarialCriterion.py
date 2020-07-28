@@ -180,9 +180,7 @@ class SpectralAdversarialCriterion(AdversarialCriterion):
         self.discriminator.train()
         real = self.discriminator(desire.detach())
         fake = self.discriminator(actual.detach())
-        lossDreal = self.relu(1.0 - real).mean()
-        lossDfake = self.relu(1.0 + fake).mean()
-        return lossDreal + lossDfake
+        return self.relu(1.0 - real).mean() + self.relu(1.0 + fake).mean()
 
 class WassersteinAdversarialCriterion(AdversarialCriterion):
     def __init__(self, dimension):
@@ -212,17 +210,11 @@ class WassersteinAdversarialCriterion(AdversarialCriterion):
         self.discriminator.train()
         real = self.discriminator(desire.detach()).view(-1)
         fake = self.discriminator(actual.detach()).view(-1)
-        wgan_lossA = fake.mean() - real.mean()
-        alpha = float(random.uniform(0,1))
-        interpolates  = alpha * desire + (1 - alpha) * actual
-        interpolates = interpolates.to(actual.device)
-        interpolates_discriminator_out  = self.discriminator(interpolates).view(-1)
-
-        buffer = torch.ones_like(interpolates_discriminator_out).to(actual.device)
-        gradients = torch.autograd.grad(outputs=interpolates_discriminator_out, inputs=interpolates,
-                                  grad_outputs=buffer,
-                                  retain_graph=True,
-                                  create_graph=True)[0]
-
+        alpha = float(random.uniform(0, 1))
+        interpolates = alpha * desire.detach().clone() + (1 - alpha) * actual.detach().clone()
+        interpolates = torch.autograd.Variable(interpolates.to(actual.device), requires_grad=True)
+        x  = self.discriminator(interpolates).view(-1)
+        buffer = torch.autograd.Variable(torch.ones_like(x).to(actual.device), requires_grad=True)
+        gradients = torch.autograd.grad(outputs=x, inputs=interpolates, grad_outputs=buffer, retain_graph=True, create_graph=True)[0]
         gradient_penalty = ((gradients.view(gradients.size(0), -1).norm(2, dim=1) - 1) ** 2).mean()
-        return wgan_lossA + 1e2*gradient_penalty
+        return fake.mean() - real.mean() + 1e2 * gradient_penalty

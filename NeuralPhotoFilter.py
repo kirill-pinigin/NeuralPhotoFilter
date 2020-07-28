@@ -10,13 +10,12 @@ import shutil
 
 from Dataset import  load_image, is_image_file
 from DataParallel import  DataParallelCriterion , DataParallelModel, DataParallelMetric
+
 LEARNING_RATE = 1e-3
 LR_THRESHOLD = 1e-7
-TRYING_LR = 3
-DEGRADATION_TOLERANCY = 7
-ACCURACY_TRESHOLD = float(0.0625)
-ITERATION_LIMIT = int(1e6)
-
+DEGRADATION_TOLERANCY = 6
+SCHEDULER_STEP = 20
+SCHEDULER_FACTOR = 0.2
 
 class NeuralPhotoFilter(object):
     def __init__(self, generator,  criterion, accuracy, dimension, image_size):
@@ -34,8 +33,8 @@ class NeuralPhotoFilter(object):
 
         self.optimizerG = torch.optim.Adam(self.generator.module.parameters(), lr = LEARNING_RATE)
         self.optimizerD = torch.optim.Adam(self.criterion.module.discriminator.parameters(), lr = LEARNING_RATE)
-        self.schedulerG = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizerG, mode='max', factor=0.1, patience=6, verbose=True, min_lr=LR_THRESHOLD)
-        self.schedulerD = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizerD, mode='min', factor=0.2, patience=6, verbose=True, min_lr=LR_THRESHOLD)
+        self.schedulerG = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizerG, mode='max', factor=SCHEDULER_FACTOR, patience=DEGRADATION_TOLERANCY, verbose=True, min_lr=LR_THRESHOLD)
+        self.schedulerD = torch.optim.lr_scheduler.StepLR(self.optimizerD, step_size=SCHEDULER_STEP, gamma=SCHEDULER_FACTOR)
 
         self.iteration = int(0)
         self.tensoration = torchvision.transforms.ToTensor()
@@ -126,14 +125,16 @@ class NeuralPhotoFilter(object):
                         lossD.backward()
                         self.optimizerD.step()
                         self.criterion.zero_grad()
+                        running_lossG += float(lossG.item()) * inputs.size(0)
+                        running_lossD += float(lossD.item()) * inputs.size(0)
 
                     if phase == 'val':
                         self.display(outputs, float(acc.mean()), epoch)
-                        with torch.no_grad():
-                            lossG, lossD = self.criterion(outputs, targets)
+                        #with torch.no_grad():
+                            #lossG, lossD = self.criterion(outputs, targets)
+                        running_lossG = float("Nan")
+                        running_lossD = float("Nan")
 
-                    running_lossG += float(lossG.item()) * inputs.size(0)
-                    running_lossD += float(lossD.item()) * inputs.size(0)
                     running_corrects += float(acc.mean()) * inputs.size(0)
 
                 epoch_lossG = running_lossG / len(dataloaders[phase].dataset)
@@ -142,18 +143,18 @@ class NeuralPhotoFilter(object):
 
                 _stdout = sys.stdout
                 sys.stdout = self.report
-                print('{} Loss: {:.4f} Accuracy  {:.4f} '.format(
-                    phase, epoch_lossG, epoch_acc))
+                print('{} LossG: {:.4f}  LossD: {:.4f} Accuracy  {:.4f} '.format(
+                    phase, epoch_lossG, epoch_lossD, epoch_acc))
                 self.report.flush()
 
                 sys.stdout = _stdout
-                print('{} Loss: {:.4f} Accuracy  {:.4f} '.format(
-                    phase, epoch_lossG, epoch_acc))
+                print('{} LossG: {:.4f}  LossD: {:.4f} Accuracy  {:.4f} '.format(
+                    phase, epoch_lossG, epoch_lossD, epoch_acc))
                 self.report.flush()
 
                 if phase == 'val':
                     self.schedulerG.step(epoch_acc)
-                    self.schedulerD.step(epoch_lossD)
+                    self.schedulerD.step()
 
                     if epoch_acc > best_acc:
                         best_acc = epoch_acc

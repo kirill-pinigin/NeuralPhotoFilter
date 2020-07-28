@@ -89,14 +89,14 @@ class AdaptivePerceptualCriterion(nn.Module):
         for i in range(len(desire_features)):
             ploss += self.factors[i]*self.distance(actual_features[i], desire_features[i])
 
+        del actual_features, desire_features
         return ploss, a, d
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()
         ploss, rest, _ = self.featurize(actual, desire)
         ones = torch.ones(rest.shape).to(actual.device)
-        aloss = self.bce(rest, ones)
-        return ploss + aloss + self.distance(actual, desire)
+        return ploss + self.bce(rest, ones) + self.distance(actual, desire)
 
     def update(self, actual, desire):
         self.discriminator.train()
@@ -218,12 +218,11 @@ class WassersteinAdaptivePerceptualCriterion(SpectralAdaptivePerceptualCriterion
     def update(self, actual, desire):
         self.discriminator.train()
         ploss, fake, real = self.featurize(actual.detach(), desire.detach())
-        wgan_loss = fake.mean() - real.mean()
         alpha = float(random.uniform(0, 1))
-        interpolates  = alpha * desire + (1 - alpha) * actual
-        interpolates = interpolates.to(actual.device)
+        interpolates = alpha * desire.detach().clone() + (1 - alpha) * actual.detach().clone()
+        interpolates = torch.autograd.Variable(interpolates.to(actual.device), requires_grad=True)
         _, interpolates_discriminator_out = self.discriminator(interpolates)
         buffer = torch.ones_like(interpolates_discriminator_out).to(actual.device)
         gradients = torch.autograd.grad(outputs=interpolates_discriminator_out, inputs=interpolates,grad_outputs=buffer, retain_graph=True, create_graph=True)[0]
         gradient_penalty = ((gradients.view(gradients.size(0), -1).norm(2, dim=1) - 1) ** 2).mean()
-        return wgan_loss + 1e2*gradient_penalty
+        return fake.mean() - real.mean() + 1e2 * gradient_penalty

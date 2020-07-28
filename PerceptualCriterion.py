@@ -1,11 +1,8 @@
 import torch
 import torch.nn as nn
 from torchvision import models
-from torch.autograd import Variable
-from torch.nn.parameter import Parameter
-import random
 
-from NeuralBlocks import  SpectralNorm
+from torch.nn.parameter import Parameter
 
 FEATURE_OFFSET = int(1)
 ITERATION_LIMIT = int(1e6)
@@ -110,7 +107,6 @@ class ChromaEdgeExtractor(nn.Module):
             self.mean = Parameter(torch.tensor([0.485, 0.456, 0.406]).view(-1, 1, 1))
             self.std = Parameter(torch.tensor([0.229, 0.224, 0.225]).view(-1, 1, 1))
 
-
         if dimension == 1 or dimension == 3:
             weight = torch.FloatTensor(64, dimension, 3, 3)
             parameters = list(features.parameters())
@@ -185,18 +181,13 @@ class ChromaEdgePerceptualCriterion(nn.Module):
     def forward(self, actual, desire):
         actuals = self.features(actual)
         desires = self.features(desire)
-
         content_loss = 0.0
         content_loss += self.factors[0]*self.distance(actuals['feat1_1'], desires['feat1_1'])
         content_loss += self.factors[1]*self.distance(actuals['feat1_2'], desires['feat1_2'])
         content_loss += self.factors[2]*self.distance(actuals['feat2_1'], desires['feat2_1'])
         content_loss += self.factors[3]*self.distance(actuals['feat2_2'], desires['feat2_2'])
-
-        self.loss = content_loss
-        return self.loss
-
-    def backward(self, retain_variables=True):
-        return self.loss.backward(retain_variables=retain_variables)
+        #del actuals, desires
+        return content_loss
 
 
 class EchelonExtractor(nn.Module):
@@ -208,7 +199,6 @@ class EchelonExtractor(nn.Module):
         if dimension == 3:
             self.mean = Parameter(torch.tensor([0.485, 0.456, 0.406]).view(-1, 1, 1))
             self.std = Parameter(torch.tensor([0.229, 0.224, 0.225]).view(-1, 1, 1))
-
 
         if dimension == 1 or dimension == 3:
             weight = torch.FloatTensor(64, dimension, 3, 3)
@@ -278,9 +268,6 @@ class EchelonPerceptualCriterion(nn.Module):
         self.features = EchelonExtractor(dimension)
         self.features.eval()
         self.weight = weight
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.cudas = list(range(torch.cuda.device_count()))
-        self.features.to(self.device)
         self.distance = nn.L1Loss()
         self.factors = [1.0, 1.0/2.0, 1.0/3.0, 1.0/4.0, 1.0/5.0]
 
@@ -293,11 +280,9 @@ class EchelonPerceptualCriterion(nn.Module):
         content_loss += self.factors[2] * self.distance(actuals['feat3_1'], desires['feat3_1'])
         content_loss += self.factors[3] * self.distance(actuals['feat4_1'], desires['feat4_1'])
         content_loss += self.factors[4] * self.distance(actuals['feat5_1'], desires['feat5_1'])
-        self.loss = content_loss + self.weight * self.distance(compute_gram_matrix(actuals['feat4_1']), compute_gram_matrix(desires['feat4_1']))
-        return self.loss
-
-    def backward(self, retain_variables=True):
-        return self.loss.backward(retain_variables=retain_variables)
+        content_loss += self.weight * self.distance(compute_gram_matrix(actuals['feat4_1']), compute_gram_matrix(desires['feat4_1']))
+        del actuals, desires
+        return content_loss
 
 
 class FastNeuralStyleExtractor(BasicMultiFeatureExtractor):
@@ -307,72 +292,24 @@ class FastNeuralStyleExtractor(BasicMultiFeatureExtractor):
 
 
 class FastNeuralStylePerceptualCriterion(nn.Module):
-    def __init__(self, dimension, weight:float = 1e-3):
+    def __init__(self, dimension, weight:float = 1e-2):
         super(FastNeuralStylePerceptualCriterion, self).__init__()
         self.factors = [1.0, 1.0/2.0, 1.0/3.0, 1.0/4.0]
         self.weight = weight
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.cudas = list(range(torch.cuda.device_count()))
         self.features = FastNeuralStyleExtractor(dimension)
         self.features.eval()
-        self.features.to(self.device)
         self.distance = nn.MSELoss()
 
     def forward(self, actual, desire):
         actuals = self.features(actual)
         desires = self.features(desire)
-        closs = 0.0
+        loss = 0.0
         for i in range(len(actuals)):
-            closs +=  self.factors[i] * self.distance(actuals[i], desires[i])
+            loss +=  self.factors[i] * self.distance(actuals[i], desires[i])
 
-        self.loss = closs + self.distance(compute_gram_matrix(actuals[2]), compute_gram_matrix(desires[2]))
-        return self.loss
-
-    def backward(self, retain_variables=True):
-        return self.loss.backward(retain_variables=retain_variables)
-
-
-class FluentExtractor(BasicMultiFeatureExtractor):
-    def __init__(self, dimension):
-        super(BasicFeatureExtractor, self).__init__()
-        self.mean = Parameter(torch.zeros(dimension).view(-1, 1, 1))
-        self.std = Parameter(torch.ones(dimension).view(-1, 1, 1))
-
-        self.feat1 = torch.nn.Sequential(
-            nn.Conv2d(in_channels=dimension, out_channels=64, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-            )
-
-        self.feat2 = torch.nn.Sequential(
-            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
-
-        self.feat3 = torch.nn.Sequential(
-            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
-
-        self.feat4 = torch.nn.Sequential(
-            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
-
+        loss += + self.weight*self.distance(compute_gram_matrix(actuals[2]), compute_gram_matrix(desires[2]))
+        del actuals, desires
+        return loss
 
 class MobileExtractor(BasicMultiFeatureExtractor):
     def __init__(self, dimension, requires_grad=False, bn = True):
@@ -384,11 +321,8 @@ class MobilePerceptualCriterion(nn.Module):
     def __init__(self, dimension):
         super(MobilePerceptualCriterion, self).__init__()
         self.factors = [1.0, 1.0/2.0, 1.0/3.0, 1.0/4.0]
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.cudas = list(range(torch.cuda.device_count()))
         self.features = MobileExtractor(dimension)
         self.features.eval()
-        self.features.to(self.device)
         self.distance = nn.MSELoss()
 
     def forward(self, actual, desire):
@@ -398,11 +332,8 @@ class MobilePerceptualCriterion(nn.Module):
         for i in range(len(actuals)):
             loss +=  self.factors[i]*self.distance(actuals[i], desires[i])
 
-        self.loss = loss
-        return self.loss
-
-    def backward(self, retain_variables=True):
-        return self.loss.backward(retain_variables=retain_variables)
+        del actuals, desires
+        return loss
 
 
 class SharpExtractor(nn.Module):
@@ -481,11 +412,10 @@ class SharpExtractor(nn.Module):
 
 
 class SharpPerceptualCriterion(FastNeuralStylePerceptualCriterion):
-    def __init__(self , dimension, weight:float = 1e-1):
-        super(SharpPerceptualCriterion, self).__init__(dimension, weight)
+    def __init__(self , dimension):
+        super(SharpPerceptualCriterion, self).__init__(dimension)
         self.features = SharpExtractor(dimension)
         self.features.eval()
-        self.features.to(self.device)
         self.distance = nn.MSELoss()
 
     def forward(self, actual, desire):
@@ -497,11 +427,8 @@ class SharpPerceptualCriterion(FastNeuralStylePerceptualCriterion):
         loss += self.distance(actuals['feat4_3'], desires['feat4_3'])
         loss += self.distance(actuals['feat4_4'], desires['feat4_4'])
         loss += self.distance(actuals['feat5_1'], desires['feat5_1'])
-        self.loss =loss
-        return self.loss
-
-    def backward(self, retain_variables=True):
-        return self.loss.backward(retain_variables=retain_variables)
+        del actuals, desires
+        return loss
 
 
 class SigmaExtractor(nn.Module):
@@ -659,8 +586,7 @@ class SigmaPerceptualCriterion(FastNeuralStylePerceptualCriterion):
         super(SigmaPerceptualCriterion, self).__init__(dimension, weight)
         self.features = SigmaExtractor(dimension)
         self.features.eval()
-        self.features.to(self.device)
-        self.distance = nn.MSECriterion()
+        self.distance = nn.MSELoss()
 
     def forward(self, actual, desire):
         actuals = self.features(actual)
@@ -680,11 +606,8 @@ class SigmaPerceptualCriterion(FastNeuralStylePerceptualCriterion):
             style_loss += self.weight*self.distance(compute_gram_matrix(actuals['feat4_4']), compute_gram_matrix(desires['feat4_4']))
             style_loss += self.weight*self.distance(compute_gram_matrix(actuals['feat5_2']), compute_gram_matrix(desires['feat5_2']))
 
-        self.loss = content_loss + style_loss
-        return self.loss
-
-    def backward(self, retain_variables=True):
-        return self.loss.backward(retain_variables=retain_variables)
+        del actuals, desires
+        return  content_loss + style_loss
 
 
 class SimpleExtractor(BasicFeatureExtractor):
@@ -697,22 +620,16 @@ class SimpleExtractor(BasicFeatureExtractor):
 class SimplePerceptualCriterion(nn.Module):
     def __init__(self, dimension):
         super(SimplePerceptualCriterion, self).__init__()
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.cudas = list(range(torch.cuda.device_count()))
         self.features = SimpleExtractor(dimension)
         self.features.eval()
-        self.features.to(self.device)
         self.distance = nn.MSELoss()
 
     def forward(self, actual, desire):
         actuals = self.features(actual)
         desires = self.features(desire)
         loss = self.distance(actuals, desires)
-        self.loss = loss
-        return self.loss
-
-    def backward(self, retain_variables=True):
-        return self.loss.backward(retain_variables=retain_variables)
+        del actuals, desires
+        return loss
 
 
 class SubSampleExtractor(BasicMultiFeatureExtractor):
@@ -726,4 +643,3 @@ class SubSamplePerceptualCriterion(MobilePerceptualCriterion):
         super(SubSamplePerceptualCriterion, self).__init__(dimension)
         self.features = SubSampleExtractor(dimension)
         self.features.eval()
-        self.features.to(self.device)

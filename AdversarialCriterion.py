@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 import random
 
 from NeuralBlocks import  SpectralNorm, TotalVariation, HueSaturationValueCriterion
@@ -42,16 +41,16 @@ class AdversarialCriterion(nn.Module):
     def evaluate(self, actual, desire):
         self.discriminator.eval()
         result = self.discriminator(actual).view(-1)
-        ones = Variable(torch.ones(result.shape).to(actual.device))
+        ones = torch.ones(result.shape).to(actual.device)
         self.lossG = self.perceptualizer(actual, desire) + self.weight * self.bce(result, ones)
         return self.lossG
 
     def update(self, actual, desire):
         self.discriminator.train()
         real = self.discriminator(desire.detach()).view(-1)
-        ones = Variable(torch.ones(real.shape).to(actual.device))
+        ones = torch.ones(real.shape).to(actual.device)
         fake = self.discriminator(actual.detach()).view(-1)
-        zeros = Variable(torch.zeros(fake.shape).to(actual.device))
+        zeros = torch.zeros(fake.shape).to(actual.device)
         return self.bce(real, ones) + self.bce(fake, zeros)
 
 
@@ -130,7 +129,7 @@ class PatchAdversarialCriterion(AdversarialCriterion):
     def evaluate(self, actual, desire):
         self.discriminator.eval()
         rest =self.discriminator(actual).view(-1)
-        ones = Variable(torch.ones(rest.shape).to(actual.device))
+        ones = torch.ones(rest.shape).to(actual.device)
         return 1e2*self.perceptualizer(actual, desire) + self.bce(rest, ones)
 
 
@@ -216,10 +215,10 @@ class WassersteinAdversarialCriterion(AdversarialCriterion):
         wgan_lossA = fake.mean() - real.mean()
         alpha = float(random.uniform(0,1))
         interpolates  = alpha * desire + (1 - alpha) * actual
-        interpolates = Variable(interpolates.clone(), requires_grad=True).to(actual.device)
+        interpolates = interpolates.to(actual.device)
         interpolates_discriminator_out  = self.discriminator(interpolates).view(-1)
 
-        buffer = Variable(torch.ones_like(interpolates_discriminator_out), requires_grad=True).to(actual.device)
+        buffer = torch.ones_like(interpolates_discriminator_out).to(actual.device)
         gradients = torch.autograd.grad(outputs=interpolates_discriminator_out, inputs=interpolates,
                                   grad_outputs=buffer,
                                   retain_graph=True,

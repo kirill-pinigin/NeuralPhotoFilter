@@ -5,7 +5,6 @@ from os import listdir
 from os.path import join
 
 import torch
-from torch.autograd import Variable
 import torchvision
 import shutil
 
@@ -24,7 +23,7 @@ class NeuralPhotoFilter(object):
         self.cudas = list(range(torch.cuda.device_count()))
         self.generator = DataParallelModel(generator, device_ids=self.cudas, output_device=self.cudas)
         self.criterion = DataParallelCriterion(criterion, device_ids=self.cudas, output_device=self.cudas)
-        self.accuracy = DataParallelMetric(accuracy)
+        self.accuracy  = DataParallelMetric(accuracy, device_ids=self.cudas, output_device=self.cudas)
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.generator.to(self.device)
         self.criterion.to(self.device)
@@ -100,11 +99,11 @@ class NeuralPhotoFilter(object):
 
             for phase in ['train', 'val']:
                 if phase == 'train':
-                    self.generator.module.train(True)
-                    self.criterion.module.train(True)
+                    self.generator.train()
+                    self.criterion.train()
                 else:
-                    self.generator.module.train(False)
-                    self.criterion.module.train(False)
+                    self.generator.eval()
+                    self.criterion.eval()
 
                 running_lossG = 0.0
                 running_lossD = 0.0
@@ -112,34 +111,34 @@ class NeuralPhotoFilter(object):
                 
                 for data in dataloaders[phase]:
                     inputs, targets = data[0], data[1]
-                    inputs  = Variable(inputs.to(self.device))
-                    targets = Variable(targets.to(self.device))
-                    self.optimizerG.step()
-                    self.optimizerD.step()
+                    inputs  = inputs.to(self.device)
+                    targets = targets.to(self.device)
+                    self.optimizerG.zero_grad()
+                    self.optimizerD.zero_grad()
                     outputs = self.generator(inputs)
                     acc = self.accuracy(outputs, targets)
 
                     if phase == 'train':
-                        self.optimizerG.zero_grad()
-                        self.optimizerD.zero_grad()
                         lossG, lossD = self.criterion(outputs, targets)
                         lossG.backward()
+                        self.optimizerG.step()
+                        self.generator.zero_grad()
                         lossD.backward()
-                        running_lossG += lossG.mean() * inputs.size(0)
-                        running_lossD += lossD.mean() * inputs.size(0)
+                        self.optimizerD.step()
+                        self.criterion.zero_grad()
 
                     if phase == 'val':
                         self.display(outputs, float(acc.mean()), epoch)
                         with torch.no_grad():
                             lossG, lossD = self.criterion(outputs, targets)
-                            running_lossG += lossG.mean() * inputs.size(0)
-                            running_lossD += lossD.mean() * inputs.size(0)
 
-                    running_corrects += acc.mean() * inputs.size(0)
+                    running_lossG += float(lossG.item()) * inputs.size(0)
+                    running_lossD += float(lossD.item()) * inputs.size(0)
+                    running_corrects += float(acc.mean()) * inputs.size(0)
 
-                epoch_lossG = float(running_lossG) / float(len(dataloaders[phase].dataset))
-                epoch_lossD = float(running_lossD) / float(len(dataloaders[phase].dataset))
-                epoch_acc = float(running_corrects) / float(len(dataloaders[phase].dataset))
+                epoch_lossG = running_lossG / len(dataloaders[phase].dataset)
+                epoch_lossD = running_lossD / len(dataloaders[phase].dataset)
+                epoch_acc = running_corrects / len(dataloaders[phase].dataset)
 
                 _stdout = sys.stdout
                 sys.stdout = self.report
@@ -181,7 +180,7 @@ class NeuralPhotoFilter(object):
 
         for data in test_loader:
             inputs, targets = data[0], data[1]
-            inputs, targets = Variable(inputs.to(self.device)), Variable(targets.to(self.device))
+            inputs, targets = inputs.to(self.device), targets.to(self.device)
             outputs = self.generator(inputs)
             acc = self.accuracy(outputs, targets)
             metric = float(acc.item())
@@ -211,7 +210,7 @@ class NeuralPhotoFilter(object):
 
     def save(self, type):
         self.generator.module.to("cpu")
-        x = Variable(torch.zeros(1, self.dimension, self.image_size, self.image_size))
+        x = torch.zeros(1, self.dimension, self.image_size, self.image_size)
         path = self.modelPath + "/" + str(self.generator.module.__class__.__name__) + str(self.generator.module.deconv1.__class__.__name__) + str(self.generator.module.activation.__class__.__name__)
         source = "Color" if self.dimension == 3 else "Gray"
         dest =  "2Color" if self.dimension == 3 else "2Gray"
@@ -252,7 +251,7 @@ class NeuralPhotoFilter(object):
             image = load_image(path, self.DIMENSION)
             input = self.tensoration(image).unsqueeze(0)
             print(input.shape)
-            input =  Variable(input.to(self.device))
+            input =  input.to(self.device)
             output,_,_ = self.generator(input)
             c = c + 1
             torchvision.utils.save_image(output.data, directory +'00000'+ str(c) + '.png', nrow=input.size(0))

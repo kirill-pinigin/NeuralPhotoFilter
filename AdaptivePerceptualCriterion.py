@@ -1,11 +1,9 @@
 import torch
 import torch.nn as nn
 from torchvision import models
-from torch.autograd import Variable
 import random
 
 from NeuralBlocks import  SpectralNorm
-from PerceptualCriterion import SQUEEZENET_CONFIG, BasicMultiFeatureExtractor
 
 def compute_gram_matrix(x):
     b, ch, h, w = x.size()
@@ -83,9 +81,6 @@ class AdaptivePerceptualCriterion(nn.Module):
     def forward(self, actual, desire):
         return self.evaluate(actual, desire), self.update(actual, desire)
 
-    def backward(self, retain_variables=True):
-        return self.lossG.backward(retain_variables=retain_variables)
-
     def featurize(self, actual, desire):
         actual_features, a = self.discriminator(actual)
         desire_features, d = self.discriminator(desire)
@@ -99,15 +94,15 @@ class AdaptivePerceptualCriterion(nn.Module):
     def evaluate(self, actual, desire):
         self.discriminator.eval()
         ploss, rest, _ = self.featurize(actual, desire)
-        ones = Variable(torch.ones(rest.shape).to(actual.device))
+        ones = torch.ones(rest.shape).to(actual.device)
         aloss = self.bce(rest, ones)
         return ploss + aloss + self.distance(actual, desire)
 
     def update(self, actual, desire):
         self.discriminator.train()
         ploss, fake, real = self.featurize(actual.detach(), desire.detach())
-        zeros = Variable(torch.zeros(fake.shape).to(actual.device))
-        ones = Variable(torch.ones(real.shape).to(actual.device))
+        zeros = torch.zeros(fake.shape).to(actual.device)
+        ones = torch.ones(real.shape).to(actual.device)
         return self.bce(real, ones) + self.bce(fake, zeros) + self.relu(self.margin - ploss).mean()
 
 
@@ -226,9 +221,9 @@ class WassersteinAdaptivePerceptualCriterion(SpectralAdaptivePerceptualCriterion
         wgan_loss = fake.mean() - real.mean()
         alpha = float(random.uniform(0, 1))
         interpolates  = alpha * desire + (1 - alpha) * actual
-        interpolates = Variable(interpolates.clone(), requires_grad=True).to(actual.device)
+        interpolates = interpolates.to(actual.device)
         _, interpolates_discriminator_out = self.discriminator(interpolates)
-        buffer = Variable(torch.ones_like(interpolates_discriminator_out), requires_grad=True).to(actual.device)
+        buffer = torch.ones_like(interpolates_discriminator_out).to(actual.device)
         gradients = torch.autograd.grad(outputs=interpolates_discriminator_out, inputs=interpolates,grad_outputs=buffer, retain_graph=True, create_graph=True)[0]
         gradient_penalty = ((gradients.view(gradients.size(0), -1).norm(2, dim=1) - 1) ** 2).mean()
         return wgan_loss + 1e2*gradient_penalty

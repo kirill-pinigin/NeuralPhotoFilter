@@ -58,6 +58,27 @@ class FreiburgGenerator(torch.nn.Module):
         return torch.tanh(y)
 
 
+class FreiburgFastGenerator(FreiburgGenerator):
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
+        super(FreiburgFastGenerator, self).__init__(dimension, deconv, activation)
+        self.enc1   = FreiburgDoubleBlock(dimension, 32, activation)
+        self.enc2   = FreiburgDoubleBlock(32,  64, activation)
+        self.enc3   = FreiburgDoubleBlock(64, 128, activation)
+        self.enc4   = FreiburgDoubleBlock(128, 256, activation)
+
+        self.center = FreiburgDoubleBlock(256, 512)
+
+        self.deconv4 = deconv(512, 256)
+        self.dec4  = FreiburgSingleBlock(512, 256, activation = activation)
+        self.deconv3 = deconv(256, 128)
+        self.dec3  = FreiburgSingleBlock(256,  128, activation = activation)
+        self.deconv2 = deconv(128, 64)
+        self.dec2  = FreiburgSingleBlock(128,  64, activation = activation)
+        self.deconv1 = deconv(64, 32)
+        self.dec1  = FreiburgSingleBlock(64,   32, activation = activation)
+        self.final  = ConvLayer(32, dimension, 1)
+
+
 class FreiburgResidualGenerator(nn.Module):
     def __init__(self, dimension, deconv=UpsampleDeConv, activation=nn.LeakyReLU()):
         super(FreiburgResidualGenerator, self).__init__()

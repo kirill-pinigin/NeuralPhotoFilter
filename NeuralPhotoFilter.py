@@ -130,8 +130,6 @@ class NeuralPhotoFilter(object):
 
                     if phase == 'val':
                         self.display(outputs, float(acc.mean()), epoch)
-                        #with torch.no_grad():
-                            #lossG, lossD = self.criterion(outputs, targets)
                         running_lossG = float("Nan")
                         running_lossD = float("Nan")
 
@@ -185,19 +183,10 @@ class NeuralPhotoFilter(object):
             outputs = self.generator(inputs)
             acc = self.accuracy(outputs, targets)
             metric = float(acc.item())
-            counter = counter + 1
 
-            if len(data) > 2:
-                denoised = data[2]
-                denoised = denoised.to(self.device)
-                acc2 = self.accuracy(denoised, targets)
-                metric2 = float(acc2.item())
-                result = torch.cat([inputs.data, outputs.data, denoised, targets.data], dim=0)
-                torchvision.utils.save_image(result, path + "Input_DeepNeural_Conventional_Target_" + str(counter) + '_SSIM(dnn)=' + str("{0:.2f}".format(metric)) +'_SSIM(non_dnn)='+ str("{0:.2f}".format(metric2)) + '.png', nrow=inputs.size(0))
-            else:
-                result = torch.cat([inputs.data, outputs.data, targets.data], dim=0)
-                torchvision.utils.save_image(result, path + "Input_DeepNeural_Target_" + str(counter) + '_SSIM=' + str(
-                    "{0:.2f}".format(metric)) + '.png', nrow=inputs.size(0))
+            for i in range(len(outputs)):
+                counter = counter + 1
+                torchvision.utils.save_image(outputs[i].data, path + "Input_OutPut_Target_" + str(counter) + '_SSIM=' + str("{0:.2f}".format(metric)) + '.jpg')
 
             running_corrects += acc.item() * inputs.size(0)
 

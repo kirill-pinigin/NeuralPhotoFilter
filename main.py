@@ -9,7 +9,7 @@ from AdversarialCriterion import AdversarialCriterion, SubSampleAdversaialCriter
 from BerkeleyGenerator import BerkeleyGenerator, BerkeleyFastGenerator, BerkeleyResidualGenerator, BerkeleySupremeGenerator
 from NeuralPhotoFilter import NeuralPhotoFilter
 from Dataset import  DeblurDataset, DenoiseDataset, Image2ImageDataset, ColorizationDataset, UpscalingDataset
-from FreiburgGenerator import FreiburgGenerator, FreiburgResidualGenerator, FreiburgSupremeGenerator, FreiburgSqueezeGenerator
+from FreiburgGenerator import FreiburgGenerator, FreiburgFastGenerator, FreiburgResidualGenerator, FreiburgSupremeGenerator, FreiburgSqueezeGenerator
 from MovaviGenerator import MovaviGenerator, MovaviFastGenerator,  MovaviResidualGenerator, MovaviStrongGenerator, MovaviSupremeGenerator
 from NeuralBlocks import SILU, UpsampleDeConv, TransposedDeConv, PixelDeConv
 from AdaptivePerceptualCriterion import AdaptivePerceptualCriterion, ResidualAdaptivePerceptualCriterion, SpectralAdaptivePerceptualCriterion, WassersteinAdaptivePerceptualCriterion
@@ -18,16 +18,16 @@ from StanfordGenerator import   StanfordGenerator, StanfordFastGenerator,  Stanf
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dimension',         type = int,   default=1, help='must be equal 1 for grayscale or 3 for RGB')
-parser.add_argument('--image_size',        type = int,   default=256, help='pixel size of square image')
+parser.add_argument('--image_size',        type = int,   default=224, help='pixel size of square image')
 parser.add_argument('--image_dir',         type = str,   default='./AustoRestorerEntireDataset300/', help='path to dataset')
 parser.add_argument('--operation',         type = str,   default='Restoration', help='type of deconvolution')
-parser.add_argument('--generator',         type = str,   default='MovaviSupreme', help='type of image generator')
-parser.add_argument('--criterion',         type = str,   default='MobileImproving', help='type of criterion')
+parser.add_argument('--generator',         type = str,   default='FreiburgFast', help='type of image generator')
+parser.add_argument('--criterion',         type = str,   default='Echelon', help='type of criterion')
 parser.add_argument('--deconv',            type = str,   default='Upsample', help='type of deconv')
 parser.add_argument('--activation',        type = str,   default='Leaky', help='type of activation')
 parser.add_argument('--optimizer',         type = str,   default='Adam', help='type of optimizer')
-parser.add_argument('--batch_size',        type = int,   default=32)
-parser.add_argument('--epochs',            type = int,   default=64)
+parser.add_argument('--batch_size',        type = int,   default=128)
+parser.add_argument('--epochs',            type = int,   default=256)
 parser.add_argument('--resume_train',      type = bool,  default=True)
 
 args = parser.parse_args()
@@ -65,6 +65,7 @@ generator_types = {
                         'BerkeleyResidual'  : BerkeleyResidualGenerator,
                         'BerkeleySupreme'   : BerkeleySupremeGenerator,
                         'Freiburg'          : FreiburgGenerator,
+                        'FreiburgFast'      : FreiburgFastGenerator,
                         'FreiburgResidual'  : FreiburgResidualGenerator,
                         'FreiburgSqueeze'   : FreiburgSqueezeGenerator,
                         'FreiburgSupreme'   : FreiburgSupremeGenerator,
@@ -131,5 +132,5 @@ test_dataset = deconvolution_dataset(args.dimension, args.image_size, args.image
 testloader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=torch.cuda.device_count())
 
 framework = NeuralPhotoFilter(generator = generator, criterion = criterion, accuracy=accuracy, dimension=args.dimension, image_size=args.image_size)
-framework.approximate(dataloaders = imageloaders, num_epochs=args.epochs, resume_train=args.resume_train)
+#framework.approximate(dataloaders = imageloaders, num_epochs=args.epochs, resume_train=args.resume_train)
 framework.estimate(testloader)

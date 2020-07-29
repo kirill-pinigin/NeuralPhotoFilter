@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torchvision import models
 
-from NeuralBlocks import BaseBlock, ConvLayer, UpsampleDeConv
+from NeuralBlocks import BaseBlock, ConvLayer, UpsampleDeConv, AttentionBlock
 
 LATENT_SPACE   = int(64)
 
@@ -77,6 +77,47 @@ class FreiburgFastGenerator(FreiburgGenerator):
         self.deconv1 = deconv(64, 32)
         self.dec1  = FreiburgSingleBlock(64,   32, activation = activation)
         self.final  = ConvLayer(32, dimension, 1)
+
+
+class FreiburgAttentiveGenerator(FreiburgFastGenerator):
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
+        super(FreiburgAttentiveGenerator, self).__init__(dimension, deconv, activation)
+        self.atb4 = AttentionBlock(F_g=256, F_l=256, F_int=128)
+        self.atb3 = AttentionBlock(F_g=128, F_l=128, F_int=64)
+        self.atb2 = AttentionBlock(F_g=64, F_l=64, F_int=32)
+        self.atb1 = AttentionBlock(F_g=32, F_l=32, F_int=16)
+
+    def forward(self, x):
+        e1 = self.enc1(x)
+        pool1 = self.max_pool(e1)
+        e2 = self.enc2(pool1)
+        pool2 = self.max_pool(e2)
+        e3 = self.enc3(pool2)
+        pool3 = self.max_pool(e3)
+        e4 = self.enc4(pool3)
+        pool4 = self.max_pool(e4)
+
+        c = self.center(pool4)
+
+        d4 = self.activation(self.deconv4(c))
+        x4 = self.atb4(g=d4, x=e4)
+        merge4 = torch.cat([d4, x4], dim=1)
+        x = self.dec4(merge4)
+        d3 = (self.deconv3(x))
+        x3 = self.atb3(g=d3, x=e3)
+        merge3 = torch.cat([d3, x3], dim=1)
+        x = self.dec3(merge3)
+        d2 = self.activation(self.deconv2(x))
+        x2 = self.atb2(g=d2, x=e2)
+        merge2 = torch.cat([d2, x2], dim=1)
+        x = self.dec2(merge2)
+        d1 = self.activation(self.deconv1(x))
+        x1 = self.atb1(g=d1, x=e1)
+        merge1 = torch.cat([d1, x1], dim=1)
+        x = self.dec1(merge1)
+        x = self.activation(x)
+        x = self.final(x)
+        return torch.tanh(x)
 
 
 class FreiburgResidualGenerator(nn.Module):

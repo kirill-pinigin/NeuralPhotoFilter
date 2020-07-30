@@ -129,7 +129,7 @@ class OxfordAdversarialCriterion(AdversarialStyleCriterion):
 class PatchAdversarialCriterion(AdversarialCriterion):
     def __init__(self, dimension):
         super(PatchAdversarialCriterion, self).__init__(dimension)
-        self.perceptualizer = EchelonPerceptualCriterion(dimension)
+        self.perceptualizer = nn.L1Loss()
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()
@@ -158,7 +158,7 @@ class PhotoRealisticAdversarialCriterion(AdversarialCriterion):
 class SpectralAdversarialCriterion(AdversarialCriterion):
     def __init__(self, dimension):
         super(SpectralAdversarialCriterion, self).__init__(dimension)
-        self.perceptualizer = MobilePerceptualCriterion(dimension)
+        self.perceptualizer = SimplePerceptualCriterion(dimension)
         self.discriminator = nn.Sequential(
             nn.Conv2d(in_channels=dimension, out_channels=64, kernel_size=4, stride=2, padding=1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
@@ -187,29 +187,14 @@ class SpectralAdversarialCriterion(AdversarialCriterion):
         fake = self.discriminator(actual.detach())
         return self.relu(1.0 - real).mean() + self.relu(1.0 + fake).mean()
 
-class WassersteinAdversarialCriterion(AdversarialCriterion):
+class WassersteinAdversarialCriterion(PatchAdversarialCriterion):
     def __init__(self, dimension):
         super(WassersteinAdversarialCriterion, self).__init__(dimension)
-        self.perceptualizer = FastNeuralStylePerceptualCriterion(dimension, 1e-2)
-        self.discriminator = nn.Sequential(
-            nn.Conv2d(in_channels=dimension, out_channels=64, kernel_size=4, stride=2, padding=1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=4, stride=2, padding=1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=4, stride=2, padding=1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=4, stride=2, padding=1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.Conv2d(in_channels=512, out_channels=1, kernel_size=4, stride=1, padding=1, bias=False),
-        )
+        self.perceptualizer = SharpPerceptualCriterion(dimension)
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()
-        return 1e2*self.perceptualizer(actual, desire) - self.discriminator(actual).view(-1).mean()
+        return self.perceptualizer(actual, desire) - self.discriminator(actual).mean()
 
     def update(self, actual, desire):
         self.discriminator.train()

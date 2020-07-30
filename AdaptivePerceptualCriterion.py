@@ -53,9 +53,7 @@ class PerceptualDiscriminator(nn.Module):
         )
 
         self.predictor = torch.nn.Sequential(
-            nn.Conv2d(in_channels=512, out_channels=8, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(8, 1, 1, 1, 0, bias=False),
+            nn.Conv2d(in_channels=512, out_channels=1, kernel_size=3, stride=1, padding=1, bias=False),
             nn.Sigmoid(),
         )
 
@@ -67,6 +65,7 @@ class PerceptualDiscriminator(nn.Module):
         result = self.predictor(feat4)
         feats = [feat1, feat2, feat3, feat4]
         return feats, result
+
 
 class AdaptivePerceptualCriterion(nn.Module):
     def __init__(self, dimension):
@@ -123,41 +122,28 @@ class OxfordDiscriminator(PerceptualDiscriminator):
             conv.weight.data.copy_(weight)
             conv.bias.data.copy_(parameters[1].data)
 
-        self.encoder0 = torch.nn.Sequential()
-        self.encoder1 = torch.nn.Sequential()
-        self.encoder2 = torch.nn.Sequential()
-        self.encoder3 = torch.nn.Sequential()
-        self.encoder4 = torch.nn.Sequential()
+        self.feat1 = torch.nn.Sequential()
+        self.feat2 = torch.nn.Sequential()
+        self.feat3 = torch.nn.Sequential()
+        self.feat4 = torch.nn.Sequential()
 
-        self.encoder0.add_module(str(0), conv)
+        self.feat1.add_module(str(0), conv)
 
         for x in range(1, 4):
-            self.encoder0.add_module(str(x), features[x])
+            self.feat1.add_module(str(x), features[x])
 
         for x in range(4, 8):
-            self.encoder1.add_module(str(x), features[x])
+            self.feat2.add_module(str(x), features[x])
 
         for x in range(8, 15):
-            self.encoder2.add_module(str(x), features[x])
+            self.feat3.add_module(str(x), features[x])
 
         for x in range(15, 22):
-            self.encoder3.add_module(str(x), features[x])
-
-        for x in range(22, 29):
-            self.encoder4.add_module(str(x), features[x])
+            self.feat4.add_module(str(x), features[x])
 
         # don't need the gradients, just want the features
         for param in self.parameters():
             param.requires_grad = True
-
-    def forward(self, x):
-        enc0 = self.encoder0(x)
-        enc1 = self.encoder1(enc0)
-        enc2 = self.encoder2(enc1)
-        enc3 = self.encoder3(enc2)
-        enc4 = self.encoder4(enc3)
-        result = self.predictor(enc4)
-        return [enc1, enc2, enc3, enc4], result
 
 
 class OxfordAdaptivePerceptualCriterion(AdaptivePerceptualCriterion):
@@ -166,7 +152,7 @@ class OxfordAdaptivePerceptualCriterion(AdaptivePerceptualCriterion):
         self.discriminator = OxfordDiscriminator(dimension)
 
 
-class ResidualDiscriminator(OxfordDiscriminator):
+class ResidualDiscriminator(PerceptualDiscriminator):
     def __init__(self, dimension):
         super(ResidualDiscriminator, self).__init__(dimension)
         base_model = models.resnet18(pretrained=True)
@@ -182,17 +168,16 @@ class ResidualDiscriminator(OxfordDiscriminator):
                     weight[i, :, :, :] = parameters[0].data[i]
             conv.weight.data.copy_(weight)
 
-        self.encoder0 = nn.Sequential(
+        self.feat1 = nn.Sequential(
             conv,
             base_model.bn1,
             nn.ReLU(),
             base_model.maxpool,
         )
 
-        self.encoder1 = base_model.layer1
-        self.encoder2 = base_model.layer2
-        self.encoder3 = base_model.layer3
-        self.encoder4 = base_model.layer4
+        self.feat2 = base_model.layer1
+        self.feat3 = base_model.layer2
+        self.feat4 = base_model.layer3
 
         for param in self.parameters():
             param.requires_grad = True
@@ -231,12 +216,12 @@ class SpectralDiscriminator(PerceptualDiscriminator):
         self.feat4 = torch.nn.Sequential(
             SpectralNorm(nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, stride=1, padding=1, bias=False)),
             nn.LeakyReLU(0.2, inplace=True),
-            SpectralNorm(nn.Conv2d(in_channels=512, out_channels=8, kernel_size=3, stride=2, padding=1, bias=False)),
+            SpectralNorm(nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, stride=2, padding=1, bias=False)),
             nn.LeakyReLU(0.2, inplace=True),
         )
 
         self.predictor = torch.nn.Sequential(
-            SpectralNorm(nn.Conv2d(8, 1, 1, 1, 0, bias=False)),
+            SpectralNorm(nn.Conv2d(in_channels=512, out_channels=1, kernel_size=3, stride=1, padding=1, bias=False)),
         )
 
 

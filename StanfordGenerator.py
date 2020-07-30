@@ -8,30 +8,27 @@ LATENT_SPACE_2 = int(LATENT_SPACE / 2)
 LATENT_SPACE_4 = int(LATENT_SPACE / 4)
 LATENT_SPACE_8 = int(LATENT_SPACE / 8)
 
+
 class StanfordGenerator(torch.nn.Module):
     def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
         super(StanfordGenerator, self).__init__()
         self.DEPTH_SIZE = int(5)
-        # Initial convolution layers
         self.conv1 = ConvLayer(dimension, LATENT_SPACE_4, kernel_size=9, stride=1)
         self.norm1 = torch.nn.BatchNorm2d(LATENT_SPACE_4, affine=True)
         self.conv2 = ConvLayer(LATENT_SPACE_4, LATENT_SPACE_2, kernel_size=3, stride=2)
         self.norm2 = torch.nn.BatchNorm2d(LATENT_SPACE_2, affine=True)
         self.conv3 = ConvLayer(LATENT_SPACE_2, LATENT_SPACE, kernel_size=3, stride=2)
         self.norm3 = torch.nn.BatchNorm2d(LATENT_SPACE, affine=True)
-        # Residual layers
         self.residual_blocks = nn.Sequential()
 
         for i in range(0, self.DEPTH_SIZE):
-            self.residual_blocks.add_module(str(i),ResidualBlock(LATENT_SPACE, LATENT_SPACE, stride = 1, activation=activation))
+            self.residual_blocks.add_module(str(i),ResidualBlock(LATENT_SPACE, LATENT_SPACE, stride=1, activation=activation))
 
-        # Upsampling Layers
         self.deconv1 = deconv(LATENT_SPACE, LATENT_SPACE_2)
         self.norm4 = torch.nn.BatchNorm2d(LATENT_SPACE_2, affine=True)
         self.deconv2 = deconv(LATENT_SPACE_2, LATENT_SPACE_4)
         self.norm5 = torch.nn.BatchNorm2d(LATENT_SPACE_4, affine=True)
         self.final = ConvLayer(LATENT_SPACE_4, dimension, kernel_size=9, stride=1)
-        # Non-linearities
         self.activation = activation
 
     def forward(self, x):
@@ -56,13 +53,11 @@ class StanfordFastGenerator(torch.nn.Module):
         self.norm2 = torch.nn.BatchNorm2d(LATENT_SPACE_4, affine=True)
         self.conv3 = ConvLayer(LATENT_SPACE_4, LATENT_SPACE_2, kernel_size=3, stride=2)
         self.norm3 = torch.nn.BatchNorm2d(LATENT_SPACE_2, affine=True)
-        # Residual layers
         self.residual_blocks = nn.Sequential()
 
         for i in range(0, self.DEPTH_SIZE):
             self.residual_blocks.add_module(str(i),ResidualBlock(LATENT_SPACE_2, LATENT_SPACE_2, stride = 1, activation=activation))
 
-        # Upsampling Layers
         self.deconv1 = deconv(LATENT_SPACE_2, LATENT_SPACE_4)
         self.norm4 = torch.nn.BatchNorm2d(LATENT_SPACE_4, affine=True)
         self.deconv2 = deconv(LATENT_SPACE_4, LATENT_SPACE_8)
@@ -76,7 +71,6 @@ class StanfordFastGenerator(torch.nn.Module):
             activation,
         )
         self.final = ConvLayer(LATENT_SPACE_8, dimension, kernel_size=9, stride=1)
-        # Non-linearities
         self.activation = activation
 
     def forward(self, x):
@@ -101,7 +95,7 @@ class StanfordStrongGenerator(StanfordGenerator):
 
 
 class StanfordModernGenerator(StanfordStrongGenerator):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
+    def __init__(self, dimension, deconv=UpsampleDeConv, activation = nn.LeakyReLU()):
         super(StanfordModernGenerator, self).__init__(dimension, deconv, activation)
         self.conv2 = ResidualBlock(LATENT_SPACE_4, LATENT_SPACE_2, stride=2, activation=activation)
         self.conv3 = ResidualBlock(LATENT_SPACE_2, LATENT_SPACE, stride=2, activation=activation)
@@ -127,29 +121,25 @@ class StanfordModernGenerator(StanfordStrongGenerator):
 
 
 class StanfordSupremeGenerator(torch.nn.Module):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation=nn.LeakyReLU()):
         super(StanfordSupremeGenerator, self).__init__()
         self.DEPTH_SIZE = int(9)
-        # Initial convolution layers
         self.conv1 = ConvLayer(dimension, 64, kernel_size=9, stride=1)
         self.norm1 = torch.nn.BatchNorm2d(64, affine=True)
         self.conv2 = ConvLayer(64, 128, kernel_size=3, stride=2)
         self.norm2 = torch.nn.BatchNorm2d(128, affine=True)
         self.conv3 = ConvLayer(128, 256, kernel_size=3, stride=2)
         self.norm3 = torch.nn.BatchNorm2d(256, affine=True)
-        # Residual layers
         self.residual_blocks = nn.Sequential()
 
         for i in range(0, self.DEPTH_SIZE):
-            self.residual_blocks.add_module(str(i), ResidualBlock(256, 256, stride = 1, activation=activation))
+            self.residual_blocks.add_module(str(i), ResidualBlock(256, 256, stride=1, activation=activation))
 
-        # Upsampling Layers
         self.deconv1 = deconv(512, 128)
         self.norm4 = torch.nn.BatchNorm2d(128, affine=True)
         self.deconv2 = deconv(256, 64)
         self.norm5 = torch.nn.BatchNorm2d(64, affine=True)
         self.final = ConvLayer(64, dimension, kernel_size=9, stride=1)
-        # Non-linearities
         self.activation = activation
 
     def forward(self, x):

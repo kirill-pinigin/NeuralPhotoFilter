@@ -3,7 +3,6 @@ import torchvision
 from torchvision import transforms
 import os
 import random
-
 import numpy as np
 from os import listdir
 from os.path import join
@@ -39,7 +38,7 @@ class Image2ImageDataset(data.Dataset):
         self.image_size = image_size
         self.augmentation = augmentation
         self.deprocess = False
-        #self.distorter = transforms.Compose([RandomSharp()])
+
         transforms_list = [
             DualResize(image_size),
             DualToTensor(),
@@ -60,7 +59,6 @@ class Image2ImageDataset(data.Dataset):
     def __getitem__(self, index):
         input = load_image(self.inputs[index], self.dimension,  self.image_size, self.augmentation)
         target = load_image(self.targets[index], self.dimension,  self.image_size, self.augmentation)
-        #input, target = self.transforms(self.distorter(input), target)
         input, target = self.transforms(input, target)
         return input, target
 
@@ -245,7 +243,6 @@ class RandomNoise(object):
             img = yuv[:, :, 0]
             img = img.astype(dtype=np.float32)
             noise = generate_perlin_noise(input , 2)
-            #noise = cv2.resize(noise, (IMAGE_SIZE, IMAGE_SIZE), interpolation=cv2.INTER_CUBIC)
             noisy_img =  img + noise.astype(dtype=np.float32)*sigma
             noisy_img = np.clip(noisy_img, 0.0, 255.0)
             noisy_img = noisy_img.astype(dtype=np.uint8)
@@ -264,9 +261,8 @@ class RandomNoise(object):
             electrons = 0.69 * photons
             additive_noise = self.random_state.normal(scale=sigma, size=electrons.shape)
             additive_noise = cv2.GaussianBlur(additive_noise,(0,0), 0.3)
-            #additive_noise = cv2.addWeighted(additive_noise,1.5, additive_noise,-0.5,0)
             noisy_img =  electrons + additive_noise
-            noisy_img  = (noisy_img * 1.33).astype(np.int) # Convert to discrete numbers
+            noisy_img  = (noisy_img * 1.33).astype(np.int)
             noisy_img += 6
             noisy_img = np.clip(noisy_img, 0, 255)
             noisy_img = noisy_img.astype(dtype=np.uint8)
@@ -286,9 +282,7 @@ class RandomNoise(object):
             n_u = np.random.normal(0.0, sigma, u.shape)
             n_v = np.random.normal(0.0, sigma, v.shape)
             n_u = cv2.blur(n_u,(5,5))
-            #n_u = cv2.addWeighted(n_u, 1.5, n_u, -0.5, 0)
             n_v = cv2.blur(n_v,(5,5))
-            #n_v = cv2.addWeighted(n_v, 1.5, n_v, -0.5, 0)
             u =  u + n_u
             v =  v + n_v
             u = np.clip(u, 0.0, 255.0)
@@ -317,7 +311,6 @@ class RandomNoise(object):
         vals = len(np.unique(image))
         vals = float(2 ** np.ceil(np.log2(vals)))
         image = image.astype(dtype=np.float32)
-
         image = np.random.poisson(image * vals) / vals
         noisy_img = image + np.random.normal(0.0, sigma, image.shape)
         noisy_img = np.clip(noisy_img, 0.0, 255.0)
@@ -404,116 +397,36 @@ def generate_unit_vectors(n, sigma= 2*np.pi):
     v = np.stack((np.cos(phi), np.sin(phi)), axis=-1)
     return v
 
-
-# quintic interpolation
 def qz(t):
     return t * t * t * (t * (t * 6 - 15) + 10)
 
-
-# cubic interpolation
 def cz(t):
     return -2 * t * t * t + 3 * t * t
 
 
 def generate_perlin_noise(size, ns, sigma = 2*np.pi):
-
-    nc = int(size / ns)  # number of nodes
-    grid_size = int(size / ns + 1)  # number of points in grid
-
-    # generate grid of vectors
+    nc = int(size / ns)
+    grid_size = int(size / ns + 1)
     v = generate_unit_vectors(grid_size, sigma)
-
-    # generate some constans in advance
     ad, ar = np.arange(ns), np.arange(-ns, 0, 1)
-
-    # vectors from each of the 4 nearest nodes to a point in the NSxNS patch
     vd = np.zeros((ns, ns, 4, 1, 2))
     for (l1, l2), c in zip(product((ad, ar), repeat=2), count()):
         vd[:, :, c, 0] = np.stack(np.meshgrid(l2, l1, indexing='xy'), axis=2)
 
-    # interpolation coefficients
     d = qz(np.stack((np.zeros((ns, ns, 2)),
                      np.stack(np.meshgrid(ad, ad, indexing='ij'), axis=2)),
                     axis=2) / ns)
     d[:, :, 0] = 1 - d[:, :, 1]
-    # make copy and reshape for convenience
     d0 = d[..., 0].copy().reshape(ns, ns, 1, 2)
     d1 = d[..., 1].copy().reshape(ns, ns, 2, 1)
-
-    # make an empy matrix
     m = np.zeros((size, size))
-    # reshape for convenience
     t = m.reshape(nc, ns, nc, ns)
 
-    # calculate values for a NSxNS patch at a time
-    for i, j in product(np.arange(nc), repeat=2):  # loop through the grid
-        # get four node vectors
+    for i, j in product(np.arange(nc), repeat=2):
         av = v[i:i+2, j:j+2].reshape(4, 2, 1)
-        # 'vector from node to point' dot 'node vector'
         at = np.matmul(vd, av).reshape(ns, ns, 2, 2)
-        # horizontal and vertical interpolation
         t[i, :, j, :] = np.matmul(np.matmul(d0, at), d1).reshape(ns, ns)
-
     return m
-
-
-class GaussianNoise(object):
-    def __init__(self, factor: float = 0.1):
-        self.sigma = 255.0 * factor
-
-    def __call__(self, input):
-        img = np.array(input)
-        img = img.astype(dtype=np.float32)
-        noisy_img = img + np.random.normal(0.0, self.sigma , img.shape)
-        noisy_img = np.clip(noisy_img, 0.0, 255.0)
-        noisy_img = noisy_img.astype(dtype=np.uint8)
-        return Image.fromarray(noisy_img)
-
-    def __repr__(self):
-        return self.__class__.__name__ + '(p={})'.format(self.sigma)
-
-
-class PoissonNoise(object):
-    def __init__(self, factor: float = 0.1):
-        self.sigma = 255.0 * factor
-
-    def __call__(self, input):
-        image = np.array(input)
-        vals = len(np.unique(image))
-        vals = float(2 ** np.ceil(np.log2(vals)))
-        image = image.astype(dtype=np.float32)
-
-        image = np.random.poisson( image * vals) / vals
-        noisy_img =  image +  np.random.normal(0.0, self.sigma, image.shape)
-        noisy_img = np.clip(noisy_img, 0.0, 255.0)
-        noisy_img = noisy_img.astype(dtype=np.uint8)
-        return Image.fromarray(noisy_img)
-
-    def __repr__(self):
-        return self.__class__.__name__ + '(p={})'.format(self.sigma)
-
-
-class SaltPepperNoise(object):
-    def __init__(self, factor: float = 0.1):
-        self.sigma = factor
-
-    def __call__(self, input):
-        image = np.array(input)
-        image = image.astype(dtype=np.float32)
-        p = self.sigma
-        flipped = np.random.choice([True, False], size=image.shape,
-                                   p=[p, 1 - p])
-        salted = np.random.choice([True, False], size=image.shape,
-                                  p=0.5)
-        peppered = ~salted
-        image[flipped & salted] = 255.0
-        image[flipped & peppered] = 0.0
-        image = np.clip(image, 0.0, 255.0)
-        image = image.astype(dtype=np.uint8)
-        return Image.fromarray(image)
-
-    def __repr__(self):
-        return self.__class__.__name__ + '(p={})'.format(self.sigma)
 
 
 class Lambda(object):

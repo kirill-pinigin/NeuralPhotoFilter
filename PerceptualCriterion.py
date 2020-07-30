@@ -6,16 +6,16 @@ from torch.nn.parameter import Parameter
 
 FEATURE_OFFSET = int(1)
 
-OXFORD_CONFIG = {'dnn' : models.vgg11(pretrained=True).features, 'features' : [ 3,  6, 11, 16] }
-OXFORD_BN_CONFIG = {'dnn': models.vgg11_bn(pretrained=True).features, 'features' : [4 , 8, 15, 22]}
+OXFORD_CONFIG = {'dnn' : models.vgg11(pretrained=True).features, 'features' : [3, 6, 11, 16]}
+OXFORD_BN_CONFIG = {'dnn': models.vgg11_bn(pretrained=True).features, 'features' : [4, 8, 15, 22]}
 
 VGG_16_CONFIG = {'dnn' : models.vgg16(pretrained=True).features, 'features' :  [4 - FEATURE_OFFSET, 9 - FEATURE_OFFSET, 16 - FEATURE_OFFSET,  23 - FEATURE_OFFSET]}
-VGG_16_BN_CONFIG = {'dnn' : models.vgg16_bn(pretrained=True).features, 'features' :  [6 - FEATURE_OFFSET * 2, 13 - FEATURE_OFFSET * 2, 23 - FEATURE_OFFSET * 2, 33 - FEATURE_OFFSET * 2] }
+VGG_16_BN_CONFIG = {'dnn' : models.vgg16_bn(pretrained=True).features, 'features' :  [6 - FEATURE_OFFSET * 2, 13 - FEATURE_OFFSET * 2, 23 - FEATURE_OFFSET * 2, 33 - FEATURE_OFFSET * 2]}
 
-VGG_19_CONFIG = {'dnn' : models.vgg19(pretrained=True).features, 'features' : [ 4 - FEATURE_OFFSET,  9 - FEATURE_OFFSET, 18 - FEATURE_OFFSET, 36 - FEATURE_OFFSET] }
+VGG_19_CONFIG = {'dnn' : models.vgg19(pretrained=True).features, 'features' : [4 - FEATURE_OFFSET,  9 - FEATURE_OFFSET, 18 - FEATURE_OFFSET, 36 - FEATURE_OFFSET]}
 VGG_19_BN_CONFIG = {'dnn': models.vgg19_bn(pretrained=True).features, 'features' : [6 - FEATURE_OFFSET * 2, 13 - FEATURE_OFFSET * 2, 23 - FEATURE_OFFSET * 2, 52 - FEATURE_OFFSET * 2]}
 
-TUBINGEN_CONFIG = {'dnn' : models.vgg19(pretrained=True).features, 'features' : [ 5,  10, 19, 28] }
+TUBINGEN_CONFIG = {'dnn' : models.vgg19(pretrained=True).features, 'features' : [5, 10, 19, 28]}
 TUBINGEN_BN_CONFIG = {'dnn': models.vgg19_bn(pretrained=True).features, 'features' : [7 , 14, 27, 40]}
 
 def compute_gram_matrix(x):
@@ -129,13 +129,13 @@ class ChromaEdgeExtractor(nn.Module):
         self.feat1_1.add_module(str(0), conv)
         self.feat1_1.add_module(str(1), features[1])
 
-        for x in range(2, 4- FEATURE_OFFSET):
+        for x in range(2, 4 - FEATURE_OFFSET):
             self.feat1_2.add_module(str(x), features[x])
 
-        for x in range(4- FEATURE_OFFSET, 7- FEATURE_OFFSET):
+        for x in range(4 - FEATURE_OFFSET, 7 - FEATURE_OFFSET):
             self.feat2_1.add_module(str(x), features[x])
 
-        for x in range(7- FEATURE_OFFSET, 9- FEATURE_OFFSET):
+        for x in range(7 - FEATURE_OFFSET, 9 - FEATURE_OFFSET):
             self.feat2_2.add_module(str(x), features[x])
 
         # don't need the gradients, just want the features
@@ -188,7 +188,7 @@ class ChromaEdgePerceptualCriterion(nn.Module):
         content_loss += self.factors[1]*self.distance(actuals['feat1_2'], desires['feat1_2'])
         content_loss += self.factors[2]*self.distance(actuals['feat2_1'], desires['feat2_1'])
         content_loss += self.factors[3]*self.distance(actuals['feat2_2'], desires['feat2_2'])
-        #del actuals, desires
+        del actuals, desires
         return content_loss
 
 
@@ -225,13 +225,13 @@ class EchelonExtractor(nn.Module):
         for x in range(2, 7 - FEATURE_OFFSET):
             self.feat2_1.add_module(str(x), features[x])
 
-        for x in range(7- FEATURE_OFFSET, 12- FEATURE_OFFSET):
+        for x in range(7 - FEATURE_OFFSET, 12 - FEATURE_OFFSET):
             self.feat3_1.add_module(str(x), features[x])
 
-        for x in range(12- FEATURE_OFFSET, 21- FEATURE_OFFSET):
+        for x in range(12 - FEATURE_OFFSET, 21 - FEATURE_OFFSET):
             self.feat4_1.add_module(str(x), features[x])
 
-        for x in range(21- FEATURE_OFFSET, 30 - FEATURE_OFFSET):
+        for x in range(21 - FEATURE_OFFSET, 30 - FEATURE_OFFSET):
             self.feat5_1.add_module(str(x), features[x])
 
         # don't need the gradients, just want the features
@@ -290,7 +290,7 @@ class EchelonPerceptualCriterion(nn.Module):
 class FastNeuralStyleExtractor(BasicMultiFeatureExtractor):
     def __init__(self, dimension, requires_grad=False , bn = True):
         features = VGG_16_BN_CONFIG if bn else VGG_16_CONFIG
-        super(FastNeuralStyleExtractor, self).__init__(dimension,features, requires_grad)
+        super(FastNeuralStyleExtractor, self).__init__(dimension, features, requires_grad)
 
 
 class FastNeuralStylePerceptualCriterion(nn.Module):
@@ -307,14 +307,15 @@ class FastNeuralStylePerceptualCriterion(nn.Module):
         desires = self.features(desire)
         loss = 0.0
         for i in range(len(actuals)):
-            loss +=  self.factors[i] * self.distance(actuals[i], desires[i])
+            loss += self.factors[i] * self.distance(actuals[i], desires[i])
 
         loss += + self.weight*self.distance(compute_gram_matrix(actuals[2]), compute_gram_matrix(desires[2]))
         del actuals, desires
         return loss
 
+
 class MobileExtractor(BasicMultiFeatureExtractor):
-    def __init__(self, dimension, requires_grad=False, bn = True):
+    def __init__(self, dimension, requires_grad=False, bn=True):
         features = VGG_19_BN_CONFIG if bn else VGG_19_CONFIG
         super(MobileExtractor, self).__init__(dimension, features, requires_grad)
 
@@ -332,16 +333,15 @@ class MobilePerceptualCriterion(nn.Module):
         desires = self.features(desire)
         loss = 0.0
         for i in range(len(actuals)):
-            loss +=  self.factors[i]*self.distance(actuals[i], desires[i])
+            loss += self.factors[i]*self.distance(actuals[i], desires[i])
 
         del actuals, desires
         return loss
 
 
-
 class OxfordExtractor(BasicMultiFeatureExtractor):
-    def __init__(self, dimension, requires_grad=False, bn = True):
-        features = OXFORD_BN_CONFIG if bn else SUBSAMPLE_CONFIG
+    def __init__(self, dimension, requires_grad=False, bn=True):
+        features = OXFORD_BN_CONFIG if bn else OXFORD_CONFIG
         super(OxfordExtractor, self).__init__(dimension, features, requires_grad)
 
 
@@ -350,7 +350,6 @@ class OxfordPerceptualCriterion(MobilePerceptualCriterion):
         super(OxfordPerceptualCriterion, self).__init__(dimension)
         self.features = OxfordExtractor(dimension)
         self.features.eval()
-
 
 
 class SharpExtractor(nn.Module):
@@ -383,19 +382,19 @@ class SharpExtractor(nn.Module):
         self.feat4_1.add_module(str(0), conv)
         self.feat4_1.add_module(str(1), features[1])
 
-        for x in range(2, 21- FEATURE_OFFSET):
+        for x in range(2, 21 - FEATURE_OFFSET):
             self.feat4_1.add_module(str(x), features[x])
 
-        for x in range(21- FEATURE_OFFSET, 23- FEATURE_OFFSET):
+        for x in range(21 - FEATURE_OFFSET, 23 - FEATURE_OFFSET):
             self.feat4_2.add_module(str(x), features[x])
 
-        for x in range(23- FEATURE_OFFSET, 25- FEATURE_OFFSET):
+        for x in range(23 - FEATURE_OFFSET, 25 - FEATURE_OFFSET):
             self.feat4_3.add_module(str(x), features[x])
 
-        for x in range(25- FEATURE_OFFSET, 27- FEATURE_OFFSET):
+        for x in range(25 - FEATURE_OFFSET, 27 - FEATURE_OFFSET):
             self.feat4_4.add_module(str(x), features[x])
 
-        for x in range(27- FEATURE_OFFSET, 30- FEATURE_OFFSET):
+        for x in range(27 - FEATURE_OFFSET, 30 - FEATURE_OFFSET):
             self.feat5_1.add_module(str(x), features[x])
 
         # don't need the gradients, just want the features
@@ -494,49 +493,49 @@ class SigmaExtractor(nn.Module):
         self.feat1_1.add_module(str(0), conv)
         self.feat1_1.add_module(str(1), features[1])
 
-        for x in range(2, 4- FEATURE_OFFSET):
+        for x in range(2, 4 - FEATURE_OFFSET):
             self.feat1_2.add_module(str(x), features[x])
 
-        for x in range(4- FEATURE_OFFSET, 7- FEATURE_OFFSET):
+        for x in range(4 - FEATURE_OFFSET, 7 - FEATURE_OFFSET):
             self.feat2_1.add_module(str(x), features[x])
 
-        for x in range(7- FEATURE_OFFSET, 9- FEATURE_OFFSET):
+        for x in range(7 - FEATURE_OFFSET, 9 - FEATURE_OFFSET):
             self.feat2_2.add_module(str(x), features[x])
 
-        for x in range(9- FEATURE_OFFSET, 12- FEATURE_OFFSET):
+        for x in range(9 - FEATURE_OFFSET, 12 - FEATURE_OFFSET):
             self.feat3_1.add_module(str(x), features[x])
 
-        for x in range(12- FEATURE_OFFSET, 14- FEATURE_OFFSET):
+        for x in range(12 - FEATURE_OFFSET, 14 - FEATURE_OFFSET):
             self.feat3_2.add_module(str(x), features[x])
 
-        for x in range(14- FEATURE_OFFSET, 16- FEATURE_OFFSET):
+        for x in range(14 - FEATURE_OFFSET, 16- FEATURE_OFFSET):
             self.feat3_3.add_module(str(x), features[x])
 
-        for x in range(16- FEATURE_OFFSET, 18- FEATURE_OFFSET):
+        for x in range(16 - FEATURE_OFFSET, 18 - FEATURE_OFFSET):
             self.feat3_4.add_module(str(x), features[x])
 
-        for x in range(18- FEATURE_OFFSET, 21- FEATURE_OFFSET):
+        for x in range(18 - FEATURE_OFFSET, 21 - FEATURE_OFFSET):
             self.feat4_1.add_module(str(x), features[x])
 
-        for x in range(21- FEATURE_OFFSET, 23- FEATURE_OFFSET):
+        for x in range(21 - FEATURE_OFFSET, 23 - FEATURE_OFFSET):
             self.feat4_2.add_module(str(x), features[x])
 
-        for x in range(23- FEATURE_OFFSET, 25- FEATURE_OFFSET):
+        for x in range(23 - FEATURE_OFFSET, 25- FEATURE_OFFSET):
             self.feat4_3.add_module(str(x), features[x])
 
-        for x in range(25- FEATURE_OFFSET, 27- FEATURE_OFFSET):
+        for x in range(25 - FEATURE_OFFSET, 27 - FEATURE_OFFSET):
             self.feat4_4.add_module(str(x), features[x])
 
-        for x in range(27- FEATURE_OFFSET, 30- FEATURE_OFFSET):
+        for x in range(27 - FEATURE_OFFSET, 30 - FEATURE_OFFSET):
             self.feat5_1.add_module(str(x), features[x])
 
-        for x in range(30- FEATURE_OFFSET, 32- FEATURE_OFFSET):
+        for x in range(30 - FEATURE_OFFSET, 32 - FEATURE_OFFSET):
             self.feat5_2.add_module(str(x), features[x])
 
-        for x in range(32- FEATURE_OFFSET, 34- FEATURE_OFFSET):
+        for x in range(32 - FEATURE_OFFSET, 34 - FEATURE_OFFSET):
             self.feat5_3.add_module(str(x), features[x])
 
-        for x in range(34- FEATURE_OFFSET, 36- FEATURE_OFFSET):
+        for x in range(34 - FEATURE_OFFSET, 36 - FEATURE_OFFSET):
             self.feat5_4.add_module(str(x), features[x])
 
         for param in self.parameters():
@@ -628,7 +627,7 @@ class SigmaPerceptualCriterion(FastNeuralStylePerceptualCriterion):
 
 
 class SimpleExtractor(BasicFeatureExtractor):
-    def __init__(self, dimension, bn = True):
+    def __init__(self, dimension, bn=True):
         features_list = VGG_19_BN_CONFIG['features'] if bn else VGG_19_CONFIG['features']
         features_limit = features_list[1]
         super(SimpleExtractor, self).__init__(dimension, VGG_19_CONFIG, features_limit)
@@ -650,7 +649,7 @@ class SimplePerceptualCriterion(nn.Module):
 
 
 class TubingenExtractor(BasicMultiFeatureExtractor):
-    def __init__(self, dimension, requires_grad=False, bn = True):
+    def __init__(self, dimension, requires_grad=False, bn=True):
         features = TUBINGEN_BN_CONFIG if bn else TUBINGEN_CONFIG
         super(TubingenExtractor, self).__init__(dimension, features, requires_grad)
 

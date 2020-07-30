@@ -179,6 +179,12 @@ class ResidualDiscriminator(PerceptualDiscriminator):
         self.feat3 = base_model.layer2
         self.feat4 = base_model.layer3
 
+        self.predictor = torch.nn.Sequential(
+            base_model.layer4,
+            nn.Conv2d(in_channels=512, out_channels=1, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Sigmoid(),
+        )
+
         for param in self.parameters():
             param.requires_grad = True
 

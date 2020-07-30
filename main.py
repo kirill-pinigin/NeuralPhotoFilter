@@ -4,21 +4,21 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 
-from AdaptivePerceptualCriterion import AdaptivePerceptualCriterion, OxfordAdaptivePerceptualCriterion ,ResidualAdaptivePerceptualCriterion, SpectralAdaptivePerceptualCriterion, WassersteinAdaptivePerceptualCriterion
+from AdaptivePerceptualCriterion import AdaptivePerceptualCriterion, OxfordAdaptivePerceptualCriterion , ResidualAdaptivePerceptualCriterion, SpectralAdaptivePerceptualCriterion, WassersteinAdaptivePerceptualCriterion
 from AdelaideGenerator import AdelaideGenerator, AdelaideFastGenerator, AdelaideResidualGenerator, AdelaideSupremeGenerator
 from AdversarialCriterion import AdversarialCriterion, EchelonAdversaialCriterion, AdversarialStyleCriterion, ChromaAdversarialCriterion,  DSLRAdversaialCriterion, PatchAdversarialCriterion, PatchColorAdversarialCriterion, MultiSigmaCriterion, MobileImprovingAdversarialCriterion, OxfordAdversarialCriterion, PhotoRealisticAdversarialCriterion, TubingenAdversaialCriterion, SpectralAdversarialCriterion, WassersteinAdversarialCriterion
 from BerkeleyGenerator import BerkeleyGenerator, BerkeleyFastGenerator, BerkeleyResidualGenerator, BerkeleySupremeGenerator
 from Dataset import  DeblurDataset, DenoiseDataset, Image2ImageDataset, ColorizationDataset, UpscalingDataset
-from FreiburgGenerator import FreiburgGenerator, FreiburgFastGenerator,FreiburgAttentiveGenerator,  FreiburgResidualGenerator, FreiburgSupremeGenerator, FreiburgSqueezeGenerator
+from FreiburgGenerator import FreiburgGenerator, FreiburgFastGenerator, FreiburgAttentiveGenerator, FreiburgResidualGenerator, FreiburgSupremeGenerator, FreiburgSqueezeGenerator
 from MovaviGenerator import MovaviGenerator, MovaviFastGenerator,  MovaviResidualGenerator, MovaviStrongGenerator, MovaviSupremeGenerator
 from NeuralBlocks import SILU, UpsampleDeConv, TransposedDeConv, PixelDeConv
 from NeuralPhotoFilter import NeuralPhotoFilter
 from SSIM import SSIM
-from StanfordGenerator import   StanfordGenerator, StanfordFastGenerator,  StanfordModernGenerator,  StanfordStrongGenerator, StanfordSupremeGenerator
+from StanfordGenerator import   StanfordGenerator, StanfordFastGenerator,  StanfordModernGenerator, StanfordStrongGenerator, StanfordSupremeGenerator
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dimension',         type = int,   default=1, help='must be equal 1 for grayscale or 3 for RGB')
-parser.add_argument('--image_size',        type = int,   default=224, help='pixel size of square image')
+parser.add_argument('--image_size',        type = int,   default=256, help='pixel size of square image')
 parser.add_argument('--image_dir',         type = str,   default='./AutoRestorerEntireDataset300/', help='path to dataset')
 parser.add_argument('--operation',         type = str,   default='Restoration', help='type of deconvolution')
 parser.add_argument('--generator',         type = str,   default='MovaviSupreme', help='type of image generator')

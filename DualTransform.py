@@ -1,8 +1,8 @@
 import random
 from PIL import Image
-
 import numbers
 import torchvision.transforms.functional as F
+
 
 class DualComposeTransforms(object):
     def __init__(self, transforms):
@@ -22,24 +22,13 @@ class DualComposeTransforms(object):
         return format_string
 
 
-class DualGrayscale(object):
-    def __init__(self, num_output_channels=1):
-        self.num_output_channels = num_output_channels
-
-    def __call__(self, input, target):
-        return F.to_grayscale(input, num_output_channels=self.num_output_channels), F.to_grayscale(target, num_output_channels=self.num_output_channels)
-
-    def __repr__(self):
-        return self.__class__.__name__ + '(num_output_channels={0})'.format(self.num_output_channels)
-
-
-
 class DualToTensor(object):
     def __call__(self, input_image, target_image):
         return F.to_tensor(input_image), F.to_tensor(target_image)
 
     def __repr__(self):
         return self.__class__.__name__ + '()'
+
 
 class DualRandomCrop(object):
     def __init__(self, size, padding=None, pad_if_needed=False, fill=0, padding_mode='constant'):

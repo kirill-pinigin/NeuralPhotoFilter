@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import random
 
-from NeuralBlocks import  SpectralNorm, TotalVariation, HueSaturationValueCriterion
+from NeuralBlocks import SpectralNorm, TotalVariation, HueSaturationValueCriterion
 from PyramidCriterion import PyramidCriterion
-from PerceptualCriterion import  ChromaEdgePerceptualCriterion, FastNeuralStylePerceptualCriterion , EchelonPerceptualCriterion, MobilePerceptualCriterion, OxfordPerceptualCriterion, SharpPerceptualCriterion , SigmaPerceptualCriterion, SimplePerceptualCriterion, TubingenPerceptualCriterion
+from PerceptualCriterion import ChromaEdgePerceptualCriterion, FastNeuralStylePerceptualCriterion, EchelonPerceptualCriterion, MobilePerceptualCriterion, OxfordPerceptualCriterion, SharpPerceptualCriterion , SigmaPerceptualCriterion, SimplePerceptualCriterion, TubingenPerceptualCriterion
 from SSIM import SSIMCriterion
 
 
@@ -66,7 +66,7 @@ class AdversarialStyleCriterion(AdversarialCriterion):
 class DSLRAdversaialCriterion(AdversarialCriterion):
     def __init__(self, dimension, weight : float = 1e-2):
         super(DSLRAdversaialCriterion, self).__init__(dimension, weight)
-        self.perceptualizer = SharpPerceptualCriterion(dimension, weight)
+        self.perceptualizer = SharpPerceptualCriterion(dimension)
         self.pyramid = PyramidCriterion()
         self.tv = TotalVariation()
 
@@ -186,6 +186,7 @@ class SpectralAdversarialCriterion(AdversarialCriterion):
         real = self.discriminator(desire.detach())
         fake = self.discriminator(actual.detach())
         return self.relu(1.0 - real).mean() + self.relu(1.0 + fake).mean()
+
 
 class WassersteinAdversarialCriterion(PatchAdversarialCriterion):
     def __init__(self, dimension):

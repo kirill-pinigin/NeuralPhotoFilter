@@ -82,10 +82,10 @@ class FreiburgFastGenerator(FreiburgGenerator):
 class FreiburgAttentiveGenerator(FreiburgFastGenerator):
     def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
         super(FreiburgAttentiveGenerator, self).__init__(dimension, deconv, activation)
-        self.atb4 = AttentionBlock(F_g=256, F_l=256, F_int=128)
-        self.atb3 = AttentionBlock(F_g=128, F_l=128, F_int=64)
-        self.atb2 = AttentionBlock(F_g=64, F_l=64, F_int=32)
-        self.atb1 = AttentionBlock(F_g=32, F_l=32, F_int=16)
+        self.atb4 = AttentionBlock(256, 128)
+        self.atb3 = AttentionBlock(128, 64)
+        self.atb2 = AttentionBlock(64, 32)
+        self.atb1 = AttentionBlock(32, 16)
 
     def forward(self, x):
         e1 = self.enc1(x)

@@ -137,34 +137,33 @@ class ConvLayer(torch.nn.Conv2d):
 
 
 class AttentionBlock(nn.Module):
-    def __init__(self, F_g, F_l, F_int):
+    def __init__(self, channels, gate_dimension):
         super(AttentionBlock, self).__init__()
 
-        self.W_g = nn.Sequential(
-            ConvLayer(F_l, F_int, kernel_size=1, stride=1,  bias=True),
-            nn.BatchNorm2d(F_int)
+        self.tract = nn.Sequential(
+            ConvLayer(channels, gate_dimension, kernel_size=1, stride=1,  bias=True),
+            nn.BatchNorm2d(gate_dimension)
         )
 
-        self.W_x = nn.Sequential(
-            ConvLayer(F_g, F_int, kernel_size=1, stride=1,  bias=True),
-            nn.BatchNorm2d(F_int)
+        self.skip = nn.Sequential(
+            ConvLayer(channels, gate_dimension, kernel_size=1, stride=1,  bias=True),
+            nn.BatchNorm2d(gate_dimension)
         )
 
-        self.psi = nn.Sequential(
-            ConvLayer(F_int, 1, kernel_size=1, stride=1,  bias=True),
-            nn.BatchNorm2d(1),
+        self.gate = nn.Sequential(
+            ConvLayer(gate_dimension, channels, kernel_size=1, stride=1,  bias=True),
+            nn.BatchNorm2d(channels),
             nn.Sigmoid()
         )
 
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, g, x):
-        g1 = self.W_g(g)
-        x1 = self.W_x(x)
-        psi = self.relu(g1 + x1)
-        psi = self.psi(psi)
-        out = x * psi
-        return out
+        t = self.tract(g)
+        s = self.skip(x)
+        psi = self.relu(torch.add(t,s))
+        psi = self.gate(psi)
+        return torch.mul(x, psi)
 
 class BaseBlock(torch.nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, activation = Identity(), bias = False ):
@@ -172,6 +171,7 @@ class BaseBlock(torch.nn.Module):
         self.model = nn.Sequential(
             ConvLayer(in_channels, out_channels, kernel_size, stride, bias),
             nn.BatchNorm2d(out_channels, affine=True),
+            nn.Dropout(),
             activation,
         )
 

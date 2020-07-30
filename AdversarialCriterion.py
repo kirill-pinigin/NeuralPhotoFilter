@@ -9,7 +9,7 @@ from SSIM import SSIMCriterion
 
 
 class AdversarialCriterion(nn.Module):
-    def __init__(self, dimension,  weight : float = 1e-3):
+    def __init__(self, dimension,  weight : float = 1e-2):
         super(AdversarialCriterion, self).__init__()
         self.weight = weight
         self.discriminator = nn.Sequential(

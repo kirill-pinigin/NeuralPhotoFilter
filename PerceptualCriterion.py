@@ -5,16 +5,18 @@ from torchvision import models
 from torch.nn.parameter import Parameter
 
 FEATURE_OFFSET = int(1)
-ITERATION_LIMIT = int(1e6)
-SQUEEZENET_CONFIG = {'dnn' : models.squeezenet1_1(pretrained=True).features, 'features' :  [2, 5, 8,  13]}
-VGG_16_CONFIG = {'dnn' : models.vgg16(pretrained=True).features, 'features' :  [4 - FEATURE_OFFSET, 9- FEATURE_OFFSET, 16- FEATURE_OFFSET,  23- FEATURE_OFFSET]}
-VGG_16_BN_CONFIG = {'dnn' : models.vgg16_bn(pretrained=True).features, 'features' :  [6- FEATURE_OFFSET * 2, 13- FEATURE_OFFSET * 2, 23- FEATURE_OFFSET * 2, 33- FEATURE_OFFSET * 2] }
 
-VGG_19_CONFIG = {'dnn' : models.vgg19(pretrained=True).features, 'features' : [ 4- FEATURE_OFFSET,  9- FEATURE_OFFSET, 18- FEATURE_OFFSET, 36- FEATURE_OFFSET] }
-VGG_19_BN_CONFIG = {'dnn': models.vgg19_bn(pretrained=True).features, 'features' : [6- FEATURE_OFFSET * 2, 13- FEATURE_OFFSET * 2, 23- FEATURE_OFFSET * 2, 52- FEATURE_OFFSET * 2]}
+OXFORD_CONFIG = {'dnn' : models.vgg11(pretrained=True).features, 'features' : [ 3,  6, 11, 16] }
+OXFORD_BN_CONFIG = {'dnn': models.vgg11_bn(pretrained=True).features, 'features' : [4 , 8, 15, 22]}
 
-SUBSAMPLE_CONFIG = {'dnn' : models.vgg19(pretrained=True).features, 'features' : [ 5,  10, 19, 28] }
-SUBSAMPLE_BN_CONFIG = {'dnn': models.vgg19_bn(pretrained=True).features, 'features' : [7 , 14, 27, 40]}
+VGG_16_CONFIG = {'dnn' : models.vgg16(pretrained=True).features, 'features' :  [4 - FEATURE_OFFSET, 9 - FEATURE_OFFSET, 16 - FEATURE_OFFSET,  23 - FEATURE_OFFSET]}
+VGG_16_BN_CONFIG = {'dnn' : models.vgg16_bn(pretrained=True).features, 'features' :  [6 - FEATURE_OFFSET * 2, 13 - FEATURE_OFFSET * 2, 23 - FEATURE_OFFSET * 2, 33 - FEATURE_OFFSET * 2] }
+
+VGG_19_CONFIG = {'dnn' : models.vgg19(pretrained=True).features, 'features' : [ 4 - FEATURE_OFFSET,  9 - FEATURE_OFFSET, 18 - FEATURE_OFFSET, 36 - FEATURE_OFFSET] }
+VGG_19_BN_CONFIG = {'dnn': models.vgg19_bn(pretrained=True).features, 'features' : [6 - FEATURE_OFFSET * 2, 13 - FEATURE_OFFSET * 2, 23 - FEATURE_OFFSET * 2, 52 - FEATURE_OFFSET * 2]}
+
+TUBINGEN_CONFIG = {'dnn' : models.vgg19(pretrained=True).features, 'features' : [ 5,  10, 19, 28] }
+TUBINGEN_BN_CONFIG = {'dnn': models.vgg19_bn(pretrained=True).features, 'features' : [7 , 14, 27, 40]}
 
 def compute_gram_matrix(x):
     b, ch, h, w = x.size()
@@ -336,6 +338,21 @@ class MobilePerceptualCriterion(nn.Module):
         return loss
 
 
+
+class OxfordExtractor(BasicMultiFeatureExtractor):
+    def __init__(self, dimension, requires_grad=False, bn = True):
+        features = OXFORD_BN_CONFIG if bn else SUBSAMPLE_CONFIG
+        super(OxfordExtractor, self).__init__(dimension, features, requires_grad)
+
+
+class OxfordPerceptualCriterion(MobilePerceptualCriterion):
+    def __init__(self, dimension):
+        super(OxfordPerceptualCriterion, self).__init__(dimension)
+        self.features = OxfordExtractor(dimension)
+        self.features.eval()
+
+
+
 class SharpExtractor(nn.Module):
     def __init__(self, dimension):
         super(SharpExtractor, self).__init__()
@@ -632,14 +649,14 @@ class SimplePerceptualCriterion(nn.Module):
         return loss
 
 
-class SubSampleExtractor(BasicMultiFeatureExtractor):
+class TubingenExtractor(BasicMultiFeatureExtractor):
     def __init__(self, dimension, requires_grad=False, bn = True):
-        features = SUBSAMPLE_BN_CONFIG if bn else SUBSAMPLE_CONFIG
-        super(SubSampleExtractor, self).__init__(dimension, features, requires_grad)
+        features = TUBINGEN_BN_CONFIG if bn else TUBINGEN_CONFIG
+        super(TubingenExtractor, self).__init__(dimension, features, requires_grad)
 
 
-class SubSamplePerceptualCriterion(MobilePerceptualCriterion):
+class TubingenPerceptualCriterion(MobilePerceptualCriterion):
     def __init__(self, dimension):
-        super(SubSamplePerceptualCriterion, self).__init__(dimension)
-        self.features = SubSampleExtractor(dimension)
+        super(TubingenPerceptualCriterion, self).__init__(dimension)
+        self.features = TubingenExtractor(dimension)
         self.features.eval()

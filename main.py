@@ -4,29 +4,29 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 
+from AdaptivePerceptualCriterion import AdaptivePerceptualCriterion, OxfordAdaptivePerceptualCriterion ,ResidualAdaptivePerceptualCriterion, SpectralAdaptivePerceptualCriterion, WassersteinAdaptivePerceptualCriterion
 from AdelaideGenerator import AdelaideGenerator, AdelaideFastGenerator, AdelaideResidualGenerator, AdelaideSupremeGenerator
-from AdversarialCriterion import AdversarialCriterion, SubSampleAdversaialCriterion, EchelonAdversaialCriterion, AdversarialStyleCriterion, ChromaAdversarialCriterion,  DSLRAdversaialCriterion, PatchAdversarialCriterion, PatchColorAdversarialCriterion, MultiSigmaCriterion, MobileImprovingAdversarialCriterion, PhotoRealisticAdversarialCriterion, SpectralAdversarialCriterion, WassersteinAdversarialCriterion
+from AdversarialCriterion import AdversarialCriterion, EchelonAdversaialCriterion, AdversarialStyleCriterion, ChromaAdversarialCriterion,  DSLRAdversaialCriterion, PatchAdversarialCriterion, PatchColorAdversarialCriterion, MultiSigmaCriterion, MobileImprovingAdversarialCriterion, OxfordAdversarialCriterion, PhotoRealisticAdversarialCriterion, TubingenAdversaialCriterion, SpectralAdversarialCriterion, WassersteinAdversarialCriterion
 from BerkeleyGenerator import BerkeleyGenerator, BerkeleyFastGenerator, BerkeleyResidualGenerator, BerkeleySupremeGenerator
-from NeuralPhotoFilter import NeuralPhotoFilter
 from Dataset import  DeblurDataset, DenoiseDataset, Image2ImageDataset, ColorizationDataset, UpscalingDataset
 from FreiburgGenerator import FreiburgGenerator, FreiburgFastGenerator,FreiburgAttentiveGenerator,  FreiburgResidualGenerator, FreiburgSupremeGenerator, FreiburgSqueezeGenerator
 from MovaviGenerator import MovaviGenerator, MovaviFastGenerator,  MovaviResidualGenerator, MovaviStrongGenerator, MovaviSupremeGenerator
 from NeuralBlocks import SILU, UpsampleDeConv, TransposedDeConv, PixelDeConv
-from AdaptivePerceptualCriterion import AdaptivePerceptualCriterion, ResidualAdaptivePerceptualCriterion, SpectralAdaptivePerceptualCriterion, WassersteinAdaptivePerceptualCriterion
+from NeuralPhotoFilter import NeuralPhotoFilter
 from SSIM import SSIM
 from StanfordGenerator import   StanfordGenerator, StanfordFastGenerator,  StanfordModernGenerator,  StanfordStrongGenerator, StanfordSupremeGenerator
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dimension',         type = int,   default=1, help='must be equal 1 for grayscale or 3 for RGB')
-parser.add_argument('--image_size',        type = int,   default=256, help='pixel size of square image')
-parser.add_argument('--image_dir',         type = str,   default='./AustoRestorerEntireDataset300/', help='path to dataset')
+parser.add_argument('--image_size',        type = int,   default=224, help='pixel size of square image')
+parser.add_argument('--image_dir',         type = str,   default='./AutoRestorerEntireDataset300/', help='path to dataset')
 parser.add_argument('--operation',         type = str,   default='Restoration', help='type of deconvolution')
 parser.add_argument('--generator',         type = str,   default='MovaviSupreme', help='type of image generator')
-parser.add_argument('--criterion',         type = str,   default='Adversarial', help='type of criterion')
+parser.add_argument('--criterion',         type = str,   default='OxfordAdaptive', help='type of criterion')
 parser.add_argument('--deconv',            type = str,   default='Upsample', help='type of deconv')
 parser.add_argument('--activation',        type = str,   default='Leaky', help='type of activation')
 parser.add_argument('--optimizer',         type = str,   default='Adam', help='type of optimizer')
-parser.add_argument('--batch_size',        type = int,   default=512)
+parser.add_argument('--batch_size',        type = int,   default=256)
 parser.add_argument('--epochs',            type = int,   default=128)
 parser.add_argument('--resume_train',      type = bool,  default=True)
 
@@ -43,15 +43,17 @@ criterion_types =   {
                         'Echelon'               : EchelonAdversaialCriterion,
                         'MultiSigma'            : MultiSigmaCriterion,
                         'MobileImproving'       : MobileImprovingAdversarialCriterion,
+                        'Oxford'                : OxfordAdversarialCriterion,
+                        'OxfordAdaptive'        : OxfordAdaptivePerceptualCriterion,
+                        'PAN'                   : AdaptivePerceptualCriterion,
                         'Patch'                 : PatchAdversarialCriterion,
                         'PatchColor'            : PatchColorAdversarialCriterion,
                         'PhotoRealistic'        : PhotoRealisticAdversarialCriterion,
-                        'Spectral'              : SpectralAdversarialCriterion,
-                        'SubSample'             : SubSampleAdversaialCriterion,
-                        'Wasserstein'           : WassersteinAdversarialCriterion,
-                        'PAN'                   : AdaptivePerceptualCriterion,
-                        'SpectralPAN'           : SpectralAdaptivePerceptualCriterion,
                         'ResidualAdaptive'      : ResidualAdaptivePerceptualCriterion,
+                        'Spectral'              : SpectralAdversarialCriterion,
+                        'SpectralPAN'           : SpectralAdaptivePerceptualCriterion,
+                        'Tubingen'              : TubingenAdversaialCriterion,
+                        'Wasserstein'           : WassersteinAdversarialCriterion,
                         'WassersteinAdaptive'   : WassersteinAdaptivePerceptualCriterion,
                     }
 

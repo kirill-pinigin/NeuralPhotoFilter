@@ -106,7 +106,67 @@ class AdaptivePerceptualCriterion(nn.Module):
         return self.bce(real, ones) + self.bce(fake, zeros) + self.relu(self.margin - ploss).mean()
 
 
-class ResidualDiscriminator(PerceptualDiscriminator):
+class OxfordDiscriminator(PerceptualDiscriminator):
+    def __init__(self, dimension):
+        super(OxfordDiscriminator, self).__init__(dimension)
+        features = models.vgg11_bn(pretrained=True).features
+        conv = nn.Conv2d(dimension, 64, kernel_size=3, padding=1)
+
+        if dimension == 1 or dimension == 3:
+            weight = torch.FloatTensor(64, dimension, 3, 3)
+            parameters = list(features.parameters())
+            for i in range(64):
+                if dimension == 1:
+                    weight[i, :, :, :] = parameters[0].data[i].mean(0)
+                else:
+                    weight[i, :, :, :] = parameters[0].data[i]
+            conv.weight.data.copy_(weight)
+            conv.bias.data.copy_(parameters[1].data)
+
+        self.encoder0 = torch.nn.Sequential()
+        self.encoder1 = torch.nn.Sequential()
+        self.encoder2 = torch.nn.Sequential()
+        self.encoder3 = torch.nn.Sequential()
+        self.encoder4 = torch.nn.Sequential()
+
+        self.encoder0.add_module(str(0), conv)
+
+        for x in range(1, 4):
+            self.encoder0.add_module(str(x), features[x])
+
+        for x in range(4, 8):
+            self.encoder1.add_module(str(x), features[x])
+
+        for x in range(8, 15):
+            self.encoder2.add_module(str(x), features[x])
+
+        for x in range(15, 22):
+            self.encoder3.add_module(str(x), features[x])
+
+        for x in range(22, 29):
+            self.encoder4.add_module(str(x), features[x])
+
+        # don't need the gradients, just want the features
+        for param in self.parameters():
+            param.requires_grad = True
+
+    def forward(self, x):
+        enc0 = self.encoder0(x)
+        enc1 = self.encoder1(enc0)
+        enc2 = self.encoder2(enc1)
+        enc3 = self.encoder3(enc2)
+        enc4 = self.encoder4(enc3)
+        result = self.predictor(enc4)
+        return [enc1, enc2, enc3, enc4], result
+
+
+class OxfordAdaptivePerceptualCriterion(AdaptivePerceptualCriterion):
+    def __init__(self, dimension):
+        super(OxfordAdaptivePerceptualCriterion, self).__init__(dimension)
+        self.discriminator = OxfordDiscriminator(dimension)
+
+
+class ResidualDiscriminator(OxfordDiscriminator):
     def __init__(self, dimension):
         super(ResidualDiscriminator, self).__init__(dimension)
         base_model = models.resnet18(pretrained=True)
@@ -136,15 +196,6 @@ class ResidualDiscriminator(PerceptualDiscriminator):
 
         for param in self.parameters():
             param.requires_grad = True
-
-    def forward(self, x):
-        enc0 = self.encoder0(x)
-        enc1 = self.encoder1(enc0)
-        enc2 = self.encoder2(enc1)
-        enc3 = self.encoder3(enc2)
-        enc4 = self.encoder4(enc3)
-        result = self.predictor(enc4)
-        return [enc1, enc2, enc3, enc4], result
 
 
 class ResidualAdaptivePerceptualCriterion(AdaptivePerceptualCriterion):

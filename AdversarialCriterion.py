@@ -4,7 +4,7 @@ import random
 
 from NeuralBlocks import  SpectralNorm, TotalVariation, HueSaturationValueCriterion
 from PyramidCriterion import PyramidCriterion
-from PerceptualCriterion import  ChromaEdgePerceptualCriterion, FastNeuralStylePerceptualCriterion , EchelonPerceptualCriterion, MobilePerceptualCriterion, SubSamplePerceptualCriterion, SharpPerceptualCriterion , SigmaPerceptualCriterion, SimplePerceptualCriterion
+from PerceptualCriterion import  ChromaEdgePerceptualCriterion, FastNeuralStylePerceptualCriterion , EchelonPerceptualCriterion, MobilePerceptualCriterion, OxfordPerceptualCriterion, SharpPerceptualCriterion , SigmaPerceptualCriterion, SimplePerceptualCriterion, TubingenPerceptualCriterion
 from SSIM import SSIMCriterion
 
 
@@ -42,8 +42,7 @@ class AdversarialCriterion(nn.Module):
         self.discriminator.eval()
         result = self.discriminator(actual).view(-1)
         ones = torch.ones(result.shape).to(actual.device)
-        self.lossG = self.perceptualizer(actual, desire) + self.weight * self.bce(result, ones)
-        return self.lossG
+        return self.perceptualizer(actual, desire) + self.weight * self.bce(result, ones)
 
     def update(self, actual, desire):
         self.discriminator.train()
@@ -61,8 +60,7 @@ class AdversarialStyleCriterion(AdversarialCriterion):
         self.distance = nn.L1Loss()
 
     def evaluate(self, actual, desire):
-        self.lossG = super(AdversarialStyleCriterion, self).evaluate(actual, desire) + self.distance(actual, desire)
-        return self.lossG
+        return super(AdversarialStyleCriterion, self).evaluate(actual, desire) + self.distance(actual, desire)
 
 
 class DSLRAdversaialCriterion(AdversarialCriterion):
@@ -104,10 +102,10 @@ class EchelonAdversaialCriterion(MobileImprovingAdversarialCriterion):
         self.perceptualizer = EchelonPerceptualCriterion(dimension, weight)
 
 
-class SubSampleAdversaialCriterion(MobileImprovingAdversarialCriterion):
+class TubingenAdversaialCriterion(MobileImprovingAdversarialCriterion):
     def __init__(self, dimension, weight : float = 1e-2):
-        super(SubSampleAdversaialCriterion, self).__init__(dimension, weight)
-        self.perceptualizer = SubSamplePerceptualCriterion(dimension)
+        super(TubingenAdversaialCriterion, self).__init__(dimension, weight)
+        self.perceptualizer = TubingenPerceptualCriterion(dimension)
 
 
 class ChromaAdversarialCriterion(MobileImprovingAdversarialCriterion):
@@ -119,6 +117,13 @@ class ChromaAdversarialCriterion(MobileImprovingAdversarialCriterion):
     def evaluate(self, actual, desire):
         return super(ChromaAdversarialCriterion, self).evaluate(actual, desire) \
                      + self.HSV(actual, desire)
+
+
+class OxfordAdversarialCriterion(AdversarialStyleCriterion):
+    def __init__(self, dimension, weight : float = 1e-2):
+        super(OxfordAdversarialCriterion, self).__init__(dimension, weight)
+        self.perceptualizer = OxfordPerceptualCriterion( dimension)
+        self.distance = nn.MSELoss()
 
 
 class PatchAdversarialCriterion(AdversarialCriterion):

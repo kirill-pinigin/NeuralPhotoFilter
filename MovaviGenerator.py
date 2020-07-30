@@ -134,7 +134,7 @@ class MovaviSupremeGenerator(MovaviStrongGenerator):
         enc4 = self.enc4(enc3)
         enc5 = self.enc5(enc4)
         c = self.center(enc5)
-        up6 = torch.cat([c, self.skip4(enc5)], dim = 1)
+        up6 = torch.cat([c, self.skip4(enc5)],    dim = 1)
         dec6 = self.dec6(up6)
         up7 = torch.cat([dec6, self.skip3(enc4)], dim=1)
         dec7 = self.dec7(up7)

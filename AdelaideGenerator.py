@@ -4,6 +4,13 @@ import torch.nn as nn
 from NeuralBlocks import BaseBlock, SimpleDecoder, SimpleEncoder, UpsampleDeConv, ResidualBlock
 
 
+'''
+Image Restoration Using Convolutional
+Auto-encoders with Symmetric Skip
+Connections
+Xiao-Jiao Mao, Chunhua Shen, Yu-Bin Yang
+'''
+
 class AdelaideGenerator(torch.nn.Module):
     def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
         super(AdelaideGenerator, self).__init__()

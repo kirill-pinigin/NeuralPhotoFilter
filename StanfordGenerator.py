@@ -8,6 +8,13 @@ LATENT_SPACE_2 = int(LATENT_SPACE / 2)
 LATENT_SPACE_4 = int(LATENT_SPACE / 4)
 LATENT_SPACE_8 = int(LATENT_SPACE / 8)
 
+'''
+Perceptual Losses for Real-Time Style Transfer
+and Super-Resolution
+Justin Johnson, Alexandre Alahi, Li Fei-Fei
+{jcjohns, alahi, feifeili}@cs.stanford.edu
+Department of Computer Science, Stanford University
+'''
 
 class StanfordGenerator(torch.nn.Module):
     def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
@@ -46,7 +53,6 @@ class StanfordFastGenerator(torch.nn.Module):
     def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
         super(StanfordFastGenerator, self).__init__()
         self.DEPTH_SIZE = int(3)
-        # Initial convolution layers
         self.conv1 = ConvLayer(dimension, LATENT_SPACE_8, kernel_size=9, stride=1)
         self.norm1 = torch.nn.BatchNorm2d(LATENT_SPACE_8, affine=True)
         self.conv2 = ConvLayer(LATENT_SPACE_8, LATENT_SPACE_4, kernel_size=3, stride=2)

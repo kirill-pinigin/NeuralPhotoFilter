@@ -286,6 +286,13 @@ class EchelonPerceptualCriterion(nn.Module):
         del actuals, desires
         return content_loss
 
+'''
+Perceptual Losses for Real-Time Style Transfer
+and Super-Resolution
+Justin Johnson, Alexandre Alahi, Li Fei-Fei
+{jcjohns, alahi, feifeili}@cs.stanford.edu
+Department of Computer Science, Stanford University
+'''
 
 class FastNeuralStyleExtractor(BasicMultiFeatureExtractor):
     def __init__(self, dimension, requires_grad=False , bn = True):
@@ -338,6 +345,9 @@ class MobilePerceptualCriterion(nn.Module):
         del actuals, desires
         return loss
 
+'''
+https://www.robots.ox.ac.uk/~vgg/research/very_deep/
+'''
 
 class OxfordExtractor(BasicMultiFeatureExtractor):
     def __init__(self, dimension, requires_grad=False, bn=True):
@@ -647,6 +657,16 @@ class SimplePerceptualCriterion(nn.Module):
         del actuals, desires
         return loss
 
+'''
+A Neural Algorithm of Artistic Style
+Leon A. Gatys,1,2,3∗ Alexander S. Ecker,1,2,4,5 Matthias Bethge1,2,4
+1Werner Reichardt Centre for Integrative Neuroscience
+and Institute of Theoretical Physics, University of Tubingen, Germany ¨
+2Bernstein Center for Computational Neuroscience, Tubingen, Germany ¨
+3Graduate School for Neural Information Processing, Tubingen, Germany ¨
+4Max Planck Institute for Biological Cybernetics, Tubingen, Germany ¨
+5Department of Neuroscience, Baylor College of Medicine, Houston, TX, USA
+'''
 
 class TubingenExtractor(BasicMultiFeatureExtractor):
     def __init__(self, dimension, requires_grad=False, bn=True):

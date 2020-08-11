@@ -3,6 +3,9 @@ import torch.nn as nn
 
 from NeuralBlocks import HueSaturationValueCriterion
 
+'''
+https://en.wikipedia.org/wiki/Pyramid_(image_processing)
+'''
 
 class PyramidExtractor(nn.Module):
     def __init__(self):

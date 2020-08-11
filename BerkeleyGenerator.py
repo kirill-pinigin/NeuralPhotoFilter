@@ -5,6 +5,11 @@ from NeuralBlocks import BaseBlock, SimpleDecoder, SimpleEncoder, UpsampleDeConv
 
 LATENT_SPACE = int(64)
 
+'''
+Image-to-Image Translation with Conditional Adversarial Networks
+Phillip Isola Jun-Yan Zhu Tinghui Zhou Alexei A. Efros
+Berkeley AI Research (BAIR) Laboratory, UC Berkeley
+'''
 
 class BerkeleyGenerator(torch.nn.Module):
     def __init__(self,dimension,  deconv = UpsampleDeConv, activation = nn.LeakyReLU()):

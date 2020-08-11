@@ -66,6 +66,11 @@ class PerceptualDiscriminator(nn.Module):
         feats = [feat1, feat2, feat3, feat4]
         return feats, result
 
+'''
+Perceptual Adversarial Networks for
+Image-to-Image Transformation
+Chaoyue Wang, Chang Xu, Chaohui Wang, Dacheng Tao
+'''
 
 class AdaptivePerceptualCriterion(nn.Module):
     def __init__(self, dimension):

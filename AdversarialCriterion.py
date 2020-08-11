@@ -7,6 +7,11 @@ from PyramidCriterion import PyramidCriterion
 from PerceptualCriterion import ChromaEdgePerceptualCriterion, FastNeuralStylePerceptualCriterion, EchelonPerceptualCriterion, MobilePerceptualCriterion, OxfordPerceptualCriterion, SharpPerceptualCriterion , SigmaPerceptualCriterion, SimplePerceptualCriterion, TubingenPerceptualCriterion
 from SSIM import SSIMCriterion
 
+'''
+Super resolution with Generative Adversarial Networks
+Boris Kovalenko
+SUID 06201315
+'''
 
 class AdversarialCriterion(nn.Module):
     def __init__(self, dimension,  weight : float = 1e-2):
@@ -62,6 +67,12 @@ class AdversarialStyleCriterion(AdversarialCriterion):
     def evaluate(self, actual, desire):
         return super(AdversarialStyleCriterion, self).evaluate(actual, desire) + self.distance(actual, desire)
 
+
+'''
+DSLR-Quality Photos on Mobile Devices with Deep Convolutional Networks
+Andrey Ignatov, Nikolay Kobyshev, Kenneth Vanhoey, Radu Timofte, Luc Van Gool
+ETH Zurich
+'''
 
 class DSLRAdversaialCriterion(AdversarialCriterion):
     def __init__(self, dimension, weight : float = 1e-2):
@@ -126,6 +137,12 @@ class OxfordAdversarialCriterion(AdversarialStyleCriterion):
         self.distance = nn.MSELoss()
 
 
+'''
+Image-to-Image Translation with Conditional Adversarial Networks
+Phillip Isola Jun-Yan Zhu Tinghui Zhou Alexei A. Efros
+Berkeley AI Research (BAIR) Laboratory, UC Berkeley
+'''
+
 class PatchAdversarialCriterion(AdversarialCriterion):
     def __init__(self, dimension):
         super(PatchAdversarialCriterion, self).__init__(dimension)
@@ -148,12 +165,31 @@ class PatchColorAdversarialCriterion(PatchAdversarialCriterion):
         return super(PatchColorAdversarialCriterion, self).evaluate(actual, desire) \
                      + self.chroma_edge(actual, desire)
 
+'''
+Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial
+Network
+Christian Ledig, Lucas Theis, Ferenc Huszar, Jose Caballero, Andrew Cunningham, ´
+Alejandro Acosta, Andrew Aitken, Alykhan Tejani, Johannes Totz, Zehan Wang, Wenzhe Shi
+Twitter
+'''
 
 class PhotoRealisticAdversarialCriterion(AdversarialCriterion):
     def __init__(self, dimension, weight : float = 1e-2):
         super(PhotoRealisticAdversarialCriterion, self).__init__(dimension, weight)
         self.perceptualizer = SimplePerceptualCriterion(dimension)
 
+'''
+SPECTRAL NORMALIZATION
+FOR GENERATIVE ADVERSARIAL NETWORKS
+Takeru Miyato1
+, Toshiki Kataoka1
+, Masanori Koyama2
+, Yuichi Yoshida3
+{miyato, kataoka}@preferred.jp
+koyama.masanori@gmail.com
+yyoshida@nii.ac.jp
+1Preferred Networks, Inc. 2Ritsumeikan University 3National Institute of Informatics
+'''
 
 class SpectralAdversarialCriterion(AdversarialCriterion):
     def __init__(self, dimension):
@@ -187,6 +223,17 @@ class SpectralAdversarialCriterion(AdversarialCriterion):
         fake = self.discriminator(actual.detach())
         return self.relu(1.0 - real).mean() + self.relu(1.0 + fake).mean()
 
+
+'''
+Improved Training of Wasserstein GANs
+Ishaan Gulrajani1∗
+, Faruk Ahmed1
+, Martin Arjovsky2
+, Vincent Dumoulin1
+, Aaron Courville1
+ Montreal Institute for Learning Algorithms
+2Courant Institute of Mathematical Sciences
+'''
 
 class WassersteinAdversarialCriterion(PatchAdversarialCriterion):
     def __init__(self, dimension):

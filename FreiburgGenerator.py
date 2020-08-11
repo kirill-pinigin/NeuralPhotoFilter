@@ -6,6 +6,13 @@ from NeuralBlocks import BaseBlock, ConvLayer, UpsampleDeConv, AttentionBlock
 
 LATENT_SPACE   = int(64)
 
+'''
+U-Net: Convolutional Networks for Biomedical
+Image Segmentation
+Olaf Ronneberger, Philipp Fischer, and Thomas Brox
+Computer Science Department and BIOSS Centre for Biological Signalling Studies,
+University of Freiburg, Germany
+'''
 
 class FreiburgGenerator(torch.nn.Module):
     def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):

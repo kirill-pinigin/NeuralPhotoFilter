@@ -12,6 +12,9 @@ def create_window(window_size, channel):
     window = _2D_window.expand(channel, 1, window_size, window_size).contiguous()
     return window
 
+'''
+https://en.wikipedia.org/wiki/Structural_similarity
+'''
 
 class SSIM(torch.nn.Module):
     def __init__(self, dimension):
@@ -44,6 +47,14 @@ class SSIMCriterion(SSIM):
     def forward(self, actual, desire):
         return 1.0 - super(SSIMCriterion, self).forward(actual, desire)
 
+'''
+Loss Functions for Image Restoration with Neural
+Networks
+Hang Zhao?,†
+, Orazio Gallo?
+, Iuri Frosio?
+, and Jan Kautz?
+'''
 
 class MultiScaleSSIMCriterion(torch.nn.Module):
     def __init__(self):

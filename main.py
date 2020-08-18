@@ -18,7 +18,7 @@ from StanfordGenerator import   StanfordGenerator, StanfordFastGenerator,  Stanf
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--operation',         type = str,   default='MotionDeblur', help='type of deconvolution')
-parser.add_argument('--image_dir',         type = str,   default='./MotionDeblurMixedRealDataset/', help='path to dataset')
+parser.add_argument('--image_dir',         type = str,   default='./GoProBlurDataset300/', help='path to dataset')
 parser.add_argument('--dimension',         type = int,   default=3, help='must be equal 1 for grayscale or 3 for RGB')
 parser.add_argument('--image_size',        type = int,   default=256, help='pixel size of square image')
 parser.add_argument('--generator',         type = str,   default='MovaviResidual', help='type of image generator')
@@ -127,16 +127,13 @@ deconvolution_dataset = operation_types[args.operation]
 augmentations = {'train' : True, 'val' : False}
 shufles = {'train' : True, 'val' : False}
 
-image_datasets = {x: deconvolution_dataset(args.dimension, args.image_size, os.path.join(args.image_dir, x),  augmentation = augmentations[x])
+image_datasets = {x: deconvolution_dataset(args.dimension, args.image_size, os.path.join(args.image_dir, x), augmentation = augmentations[x])
                     for x in ['train', 'val']}
 
-imageloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size,
+image_loaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=args.batch_size,
                                              shuffle=shufles[x], num_workers=torch.cuda.device_count())
                 for x in ['train', 'val']}
 
-test_dataset = deconvolution_dataset(args.dimension, args.image_size, args.image_dir+'/val/',  augmentation = False)
-testloader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=torch.cuda.device_count())
-
 framework = NeuralPhotoFilter(generator = generator, criterion = criterion, accuracy=accuracy, dimension=args.dimension, image_size=args.image_size)
-framework.approximate(dataloaders = imageloaders, num_epochs=args.epochs, resume_train=args.resume_train)
-framework.estimate(testloader)
+framework.approximate(dataloaders = image_loaders, num_epochs=args.epochs, resume_train=args.resume_train)
+framework.estimate(image_loaders['val'])

@@ -637,16 +637,15 @@ class SigmaPerceptualCriterion(FastNeuralStylePerceptualCriterion):
 
 
 class SimpleExtractor(BasicFeatureExtractor):
-    def __init__(self, dimension, bn=True):
-        features_list = VGG_19_BN_CONFIG['features'] if bn else VGG_19_CONFIG['features']
-        features_limit = features_list[1]
+    def __init__(self, dimension, type : str = 'Photo'):
+        features_limit = (9 - FEATURE_OFFSET) if type == 'Photo' else (16 - FEATURE_OFFSET)
         super(SimpleExtractor, self).__init__(dimension, VGG_19_CONFIG, features_limit)
 
 
 class SimplePerceptualCriterion(nn.Module):
-    def __init__(self, dimension):
+    def __init__(self, dimension, type : str = 'Photo'):
         super(SimplePerceptualCriterion, self).__init__()
-        self.features = SimpleExtractor(dimension)
+        self.features = SimpleExtractor(dimension, type)
         self.features.eval()
         self.distance = nn.MSELoss()
 

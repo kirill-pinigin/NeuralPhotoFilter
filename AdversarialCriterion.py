@@ -67,7 +67,6 @@ class AdversarialStyleCriterion(AdversarialCriterion):
     def evaluate(self, actual, desire):
         return super(AdversarialStyleCriterion, self).evaluate(actual, desire) + self.distance(actual, desire)
 
-
 '''
 DSLR-Quality Photos on Mobile Devices with Deep Convolutional Networks
 Andrey Ignatov, Nikolay Kobyshev, Kenneth Vanhoey, Radu Timofte, Luc Van Gool
@@ -79,12 +78,9 @@ class DSLRAdversaialCriterion(AdversarialCriterion):
         super(DSLRAdversaialCriterion, self).__init__(dimension, weight)
         self.perceptualizer = SharpPerceptualCriterion(dimension)
         self.pyramid = PyramidCriterion()
-        self.tv = TotalVariation()
 
     def evaluate(self, actual, desire):
-        return  super(DSLRAdversaialCriterion, self).evaluate(actual, desire) \
-                    + self.pyramid(actual, desire) \
-                    + self.tv(actual)
+        return  super(DSLRAdversaialCriterion, self).evaluate(actual, desire) + self.pyramid(actual, desire)
 
 
 class MobileImprovingAdversarialCriterion(AdversarialCriterion):
@@ -136,7 +132,6 @@ class OxfordAdversarialCriterion(AdversarialStyleCriterion):
         self.perceptualizer = OxfordPerceptualCriterion( dimension)
         self.distance = nn.MSELoss()
 
-
 '''
 Image-to-Image Translation with Conditional Adversarial Networks
 Phillip Isola Jun-Yan Zhu Tinghui Zhou Alexei A. Efros
@@ -162,13 +157,29 @@ class PatchColorAdversarialCriterion(PatchAdversarialCriterion):
         self.chroma_edge = ChromaEdgePerceptualCriterion(dimension)
 
     def evaluate(self, actual, desire):
-        return super(PatchColorAdversarialCriterion, self).evaluate(actual, desire) \
-                     + self.chroma_edge(actual, desire)
+        return super(PatchColorAdversarialCriterion, self).evaluate(actual, desire) + self.chroma_edge(actual, desire)
+
+'''
+DeblurGAN: Blind Motion Deblurring Using Conditional Adversarial Networks
+Orest Kupyn1,3, Volodymyr Budzan1,3, Mykola Mykhailych1
+, Dmytro Mishkin2
+,  Matas2
+1 Ukrainian Catholic University, Lviv, Ukraine
+{kupyn, budzan, mykhailych}@ucu.edu.ua
+2 Visual Recognition Group, Center for Machine Perception, FEE, CTU in Prague
+{mishkdmy, matas}@cmp.felk.cvut.cz
+3 ELEKS Ltd
+'''
+
+class DeblurSimpleCriterion(PatchAdversarialCriterion):
+    def __init__(self, dimension):
+        super(PatchAdversarialCriterion, self).__init__(dimension)
+        self.perceptualizer = SimplePerceptualCriterion(dimension, 'Sharp')
 
 '''
 Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial
 Network
-Christian Ledig, Lucas Theis, Ferenc Huszar, Jose Caballero, Andrew Cunningham, ´
+Christian Ledig, Lucas Theis, Ferenc Huszar, Jose Caballero, Andrew Cunningham, Â´
 Alejandro Acosta, Andrew Aitken, Alykhan Tejani, Johannes Totz, Zehan Wang, Wenzhe Shi
 Twitter
 '''
@@ -226,7 +237,7 @@ class SpectralAdversarialCriterion(AdversarialCriterion):
 
 '''
 Improved Training of Wasserstein GANs
-Ishaan Gulrajani1∗
+Ishaan Gulrajani1â
 , Faruk Ahmed1
 , Martin Arjovsky2
 , Vincent Dumoulin1
@@ -256,3 +267,24 @@ class WassersteinAdversarialCriterion(PatchAdversarialCriterion):
         gradients = torch.autograd.grad(outputs=x, inputs=interpolates, grad_outputs=buffer, retain_graph=True, create_graph=True)[0]
         gradient_penalty = ((gradients.view(gradients.size(0), -1).norm(2, dim=1) - 1) ** 2).mean()
         return fake.mean() - real.mean() + 1e2 * gradient_penalty
+
+'''
+DeblurGAN: Blind Motion Deblurring Using Conditional Adversarial Networks
+Orest Kupyn1,3, Volodymyr Budzan1,3, Mykola Mykhailych1
+, Dmytro Mishkin2
+,  Matas2
+1 Ukrainian Catholic University, Lviv, Ukraine
+{kupyn, budzan, mykhailych}@ucu.edu.ua
+2 Visual Recognition Group, Center for Machine Perception, FEE, CTU in Prague
+{mishkdmy, matas}@cmp.felk.cvut.cz
+3 ELEKS Ltd
+'''
+
+class DeblurWassersteinAdversarialCriterion(WassersteinAdversarialCriterion):
+    def __init__(self, dimension):
+        super(DeblurWassersteinAdversarialCriterion, self).__init__(dimension)
+        self.perceptualizer = SimplePerceptualCriterion(dimension, 'Sharp')
+
+    def evaluate(self, actual, desire):
+        self.discriminator.eval()
+        return 1e2*self.perceptualizer(actual, desire) - self.discriminator(actual).mean()

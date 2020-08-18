@@ -6,7 +6,7 @@ import torch.nn as nn
 
 from AdaptivePerceptualCriterion import AdaptivePerceptualCriterion, OxfordAdaptivePerceptualCriterion , ResidualAdaptivePerceptualCriterion, SpectralAdaptivePerceptualCriterion, WassersteinAdaptivePerceptualCriterion
 from AdelaideGenerator import AdelaideGenerator, AdelaideFastGenerator, AdelaideResidualGenerator, AdelaideSupremeGenerator
-from AdversarialCriterion import AdversarialCriterion, EchelonAdversaialCriterion, AdversarialStyleCriterion, ChromaAdversarialCriterion,  DSLRAdversaialCriterion, PatchAdversarialCriterion, PatchColorAdversarialCriterion, MultiSigmaCriterion, MobileImprovingAdversarialCriterion, OxfordAdversarialCriterion, PhotoRealisticAdversarialCriterion, TubingenAdversaialCriterion, SpectralAdversarialCriterion, WassersteinAdversarialCriterion
+from AdversarialCriterion import AdversarialCriterion, EchelonAdversaialCriterion, AdversarialStyleCriterion, ChromaAdversarialCriterion,  DSLRAdversaialCriterion, PatchAdversarialCriterion, PatchColorAdversarialCriterion, DeblurSimpleCriterion, MultiSigmaCriterion, MobileImprovingAdversarialCriterion, OxfordAdversarialCriterion, PhotoRealisticAdversarialCriterion, TubingenAdversaialCriterion, SpectralAdversarialCriterion, WassersteinAdversarialCriterion, DeblurWassersteinAdversarialCriterion
 from BerkeleyGenerator import BerkeleyGenerator, BerkeleyFastGenerator, BerkeleyResidualGenerator, BerkeleySupremeGenerator
 from Dataset import  DeblurDataset, DenoiseDataset, Image2ImageDataset, ColorizationDataset, UpscalingDataset
 from FreiburgGenerator import FreiburgGenerator, FreiburgFastGenerator, FreiburgAttentiveGenerator, FreiburgResidualGenerator, FreiburgSupremeGenerator, FreiburgSqueezeGenerator
@@ -17,12 +17,12 @@ from SSIM import SSIM
 from StanfordGenerator import   StanfordGenerator, StanfordFastGenerator,  StanfordModernGenerator, StanfordStrongGenerator, StanfordSupremeGenerator
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--operation',         type = str,   default='Restoration', help='type of deconvolution')
-parser.add_argument('--image_dir',         type = str,   default='./AutoRestorerEntireDataset300/', help='path to dataset')
-parser.add_argument('--dimension',         type = int,   default=1, help='must be equal 1 for grayscale or 3 for RGB')
+parser.add_argument('--operation',         type = str,   default='MotionDeblur', help='type of deconvolution')
+parser.add_argument('--image_dir',         type = str,   default='./MotionDeblurMixedRealDataset/', help='path to dataset')
+parser.add_argument('--dimension',         type = int,   default=3, help='must be equal 1 for grayscale or 3 for RGB')
 parser.add_argument('--image_size',        type = int,   default=256, help='pixel size of square image')
-parser.add_argument('--generator',         type = str,   default='MovaviSupreme', help='type of image generator')
-parser.add_argument('--criterion',         type = str,   default='Oxford', help='type of criterion')
+parser.add_argument('--generator',         type = str,   default='MovaviResidual', help='type of image generator')
+parser.add_argument('--criterion',         type = str,   default='DeblurSimple', help='type of criterion')
 parser.add_argument('--deconv',            type = str,   default='Upsample', help='type of deconv')
 parser.add_argument('--activation',        type = str,   default='Leaky', help='type of activation')
 parser.add_argument('--optimizer',         type = str,   default='Adam', help='type of optimizer')
@@ -39,6 +39,7 @@ operation_types =   {
                         'Colorization'      : ColorizationDataset,
                         'Deblur'            : DeblurDataset,
                         'Denoise'           : DenoiseDataset,
+                        'MotionDeblur'      : Image2ImageDataset,
                         'Restoration'       : Image2ImageDataset,
                         'Upscaling'         : UpscalingDataset,
                     }
@@ -47,6 +48,8 @@ criterion_types =   {
                         'Adversarial'           : AdversarialCriterion,
                         'AdversarialStyle'      : AdversarialStyleCriterion,
                         'Chroma'                : ChromaAdversarialCriterion,
+                        'DeblurSimple'          : DeblurSimpleCriterion,
+                        'DeblurWasserstein'     : DeblurWassersteinAdversarialCriterion,
                         'DSLR'                  : DSLRAdversaialCriterion,
                         'Echelon'               : EchelonAdversaialCriterion,
                         'MultiSigma'            : MultiSigmaCriterion,

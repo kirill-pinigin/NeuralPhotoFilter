@@ -171,7 +171,7 @@ class BaseBlock(torch.nn.Module):
         self.model = nn.Sequential(
             ConvLayer(in_channels, out_channels, kernel_size, stride, bias),
             nn.BatchNorm2d(out_channels, affine=True),
-            nn.Dropout(),
+            nn.Dropout(0,0),
             activation,
         )
 

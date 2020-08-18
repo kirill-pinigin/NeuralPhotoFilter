@@ -181,7 +181,7 @@ class RandomBlur(object):
         self.blurring_filters = [ImageFilter.BoxBlur, ImageFilter.GaussianBlur]
     def __call__(self, input):
         index = int(random.uniform(0,  len(self.blurring_filters)))
-        radius = np.random.choice([0,  1, 2])
+        radius = np.random.choice([0, 1, 2])
         blurring_filter = self.blurring_filters[index](radius)
         return input.filter(blurring_filter)
 

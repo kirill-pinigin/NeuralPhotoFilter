@@ -132,37 +132,7 @@ class FreiburgModernGenerator(FreiburgAttentiveGenerator):
         super(FreiburgModernGenerator, self).__init__(dimension, deconv, activation)
 
     def forward(self, x):
-        skip = x
-        e1 = self.enc1(x)
-        pool1 = self.max_pool(e1)
-        e2 = self.enc2(pool1)
-        pool2 = self.max_pool(e2)
-        e3 = self.enc3(pool2)
-        pool3 = self.max_pool(e3)
-        e4 = self.enc4(pool3)
-        pool4 = self.max_pool(e4)
-
-        c = self.center(pool4)
-
-        d4 = self.activation(self.deconv4(c))
-        x4 = self.atb4(g=d4, x=e4)
-        merge4 = torch.cat([d4, x4], dim=1)
-        x = self.dec4(merge4)
-        d3 = (self.deconv3(x))
-        x3 = self.atb3(g=d3, x=e3)
-        merge3 = torch.cat([d3, x3], dim=1)
-        x = self.dec3(merge3)
-        d2 = self.activation(self.deconv2(x))
-        x2 = self.atb2(g=d2, x=e2)
-        merge2 = torch.cat([d2, x2], dim=1)
-        x = self.dec2(merge2)
-        d1 = self.activation(self.deconv1(x))
-        x1 = self.atb1(g=d1, x=e1)
-        merge1 = torch.cat([d1, x1], dim=1)
-        x = self.dec1(merge1)
-        x = self.activation(x)
-        x = self.final(x )
-        return torch.tanh(x + skip)
+        return super(FreiburgModernGenerator, self).forward(x) + x
 
 
 class FreiburgResidualGenerator(nn.Module):

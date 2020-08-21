@@ -284,7 +284,3 @@ class DeblurWassersteinAdversarialCriterion(WassersteinAdversarialCriterion):
     def __init__(self, dimension):
         super(DeblurWassersteinAdversarialCriterion, self).__init__(dimension)
         self.perceptualizer = SimplePerceptualCriterion(dimension, 'Sharp')
-
-    def evaluate(self, actual, desire):
-        self.discriminator.eval()
-        return 1e0*self.perceptualizer(actual, desire) - self.discriminator(actual).mean()

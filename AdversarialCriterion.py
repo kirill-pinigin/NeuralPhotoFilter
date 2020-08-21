@@ -287,4 +287,4 @@ class DeblurWassersteinAdversarialCriterion(WassersteinAdversarialCriterion):
 
     def evaluate(self, actual, desire):
         self.discriminator.eval()
-        return 1e2*self.perceptualizer(actual, desire) - self.discriminator(actual).mean()
+        return 1e0*self.perceptualizer(actual, desire) - self.discriminator(actual).mean()

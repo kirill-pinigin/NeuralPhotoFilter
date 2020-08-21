@@ -9,7 +9,7 @@ from AdelaideGenerator import AdelaideGenerator, AdelaideFastGenerator, Adelaide
 from AdversarialCriterion import AdversarialCriterion, EchelonAdversaialCriterion, AdversarialStyleCriterion, ChromaAdversarialCriterion,  DSLRAdversaialCriterion, PatchAdversarialCriterion, PatchColorAdversarialCriterion, DeblurSimpleCriterion, MultiSigmaCriterion, MobileImprovingAdversarialCriterion, OxfordAdversarialCriterion, PhotoRealisticAdversarialCriterion, TubingenAdversaialCriterion, SpectralAdversarialCriterion, WassersteinAdversarialCriterion, DeblurWassersteinAdversarialCriterion
 from BerkeleyGenerator import BerkeleyGenerator, BerkeleyFastGenerator, BerkeleyResidualGenerator, BerkeleySupremeGenerator
 from Dataset import  DeblurDataset, DenoiseDataset, Image2ImageDataset, ColorizationDataset, UpscalingDataset
-from FreiburgGenerator import FreiburgGenerator, FreiburgFastGenerator, FreiburgAttentiveGenerator, FreiburgResidualGenerator, FreiburgSupremeGenerator, FreiburgSqueezeGenerator
+from FreiburgGenerator import FreiburgGenerator, FreiburgFastGenerator, FreiburgAttentiveGenerator, FreiburgModernGenerator, FreiburgResidualGenerator, FreiburgSupremeGenerator, FreiburgSqueezeGenerator
 from MovaviGenerator import MovaviGenerator, MovaviFastGenerator,  MovaviResidualGenerator, MovaviStrongGenerator, MovaviSupremeGenerator
 from NeuralBlocks import SILU, UpsampleDeConv, TransposedDeConv, PixelDeConv
 from NeuralPhotoFilter import NeuralPhotoFilter
@@ -18,15 +18,15 @@ from StanfordGenerator import   StanfordGenerator, StanfordFastGenerator,  Stanf
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--operation',         type = str,   default='MotionDeblur', help='type of deconvolution')
-parser.add_argument('--image_dir',         type = str,   default='./GoProBlurDataset300/', help='path to dataset')
+parser.add_argument('--image_dir',         type = str,   default='./MotionDeblurMixedRealDataset300/', help='path to dataset')
 parser.add_argument('--dimension',         type = int,   default=3, help='must be equal 1 for grayscale or 3 for RGB')
-parser.add_argument('--image_size',        type = int,   default=256, help='pixel size of square image')
-parser.add_argument('--generator',         type = str,   default='MovaviResidual', help='type of image generator')
-parser.add_argument('--criterion',         type = str,   default='DeblurSimple', help='type of criterion')
+parser.add_argument('--image_size',        type = int,   default=224, help='pixel size of square image')
+parser.add_argument('--generator',         type = str,   default='FreiburgModern', help='type of image generator')
+parser.add_argument('--criterion',         type = str,   default='DeblurWasserstein', help='type of criterion')
 parser.add_argument('--deconv',            type = str,   default='Upsample', help='type of deconv')
 parser.add_argument('--activation',        type = str,   default='Leaky', help='type of activation')
 parser.add_argument('--optimizer',         type = str,   default='Adam', help='type of optimizer')
-parser.add_argument('--batch_size',        type = int,   default=256)
+parser.add_argument('--batch_size',        type = int,   default=128)
 parser.add_argument('--epochs',            type = int,   default=256)
 parser.add_argument('--resume_train',      type = bool,  default=True)
 
@@ -85,6 +85,7 @@ generator_types = {
                         'Stanford'          : StanfordGenerator,
                         'StanfordFast'      : StanfordFastGenerator,
                         'FreiburgAttentive' : FreiburgAttentiveGenerator,
+                        'FreiburgModern'    : FreiburgModernGenerator,
                         'StanfordModern'    : StanfordModernGenerator,
                         'StanfordStrong'    : StanfordStrongGenerator,
                         'StanfordSupreme'   : StanfordSupremeGenerator,

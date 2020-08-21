@@ -91,26 +91,48 @@ class StanfordFastGenerator(torch.nn.Module):
         return torch.tanh(x)
 
 
-class StanfordStrongGenerator(StanfordGenerator):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(StanfordStrongGenerator, self).__init__(dimension, deconv, activation)
-        self.DEPTH_ADDITIONAL = int(4)
+class StanfordStrongGenerator(torch.nn.Module):
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation=nn.LeakyReLU()):
+        super(StanfordStrongGenerator, self).__init__()
+        self.DEPTH_SIZE = int(9)
+        self.conv1 = ConvLayer(dimension, 64, kernel_size=9, stride=1)
+        self.norm1 = torch.nn.BatchNorm2d(64, affine=True)
+        self.conv2 = ConvLayer(64, 128, kernel_size=3, stride=2)
+        self.norm2 = torch.nn.BatchNorm2d(128, affine=True)
+        self.conv3 = ConvLayer(128, 256, kernel_size=3, stride=2)
+        self.norm3 = torch.nn.BatchNorm2d(256, affine=True)
+        self.residual_blocks = nn.Sequential()
 
-        for i in range(self.DEPTH_SIZE, self.DEPTH_SIZE + self.DEPTH_ADDITIONAL):
-            self.residual_blocks.add_module(str(i),ResidualBlock(LATENT_SPACE, LATENT_SPACE, stride = 1, activation=activation))
+        for i in range(0, self.DEPTH_SIZE):
+            self.residual_blocks.add_module(str(i), ResidualBlock(256, 256, stride=1, activation=activation))
+
+        self.deconv1 = deconv(256, 128)
+        self.norm4 = torch.nn.BatchNorm2d(128, affine=True)
+        self.deconv2 = deconv(128, 64)
+        self.norm5 = torch.nn.BatchNorm2d(64, affine=True)
+        self.final = ConvLayer(64, dimension, kernel_size=9, stride=1)
+        self.activation = activation
+
+    def forward(self, x):
+        skip = self.activation(self.norm1(self.conv1(x)))
+        e1 = self.activation(self.norm2(self.conv2(skip)))
+        e2 = self.activation(self.norm3(self.conv3(e1)))
+        x = self.residual_blocks(e2)
+        x = self.activation(self.norm4(self.deconv1(x)))
+        x = self.activation(self.norm5(self.deconv2(x)))
+        x = self.final(x + skip)
+        return torch.tanh(x)
 
 
 class StanfordModernGenerator(StanfordStrongGenerator):
     def __init__(self, dimension, deconv=UpsampleDeConv, activation = nn.LeakyReLU()):
         super(StanfordModernGenerator, self).__init__(dimension, deconv, activation)
-        self.conv2 = ResidualBlock(LATENT_SPACE_4, LATENT_SPACE_2, stride=2, activation=activation)
-        self.conv3 = ResidualBlock(LATENT_SPACE_2, LATENT_SPACE, stride=2, activation=activation)
         self.refinement = nn.Sequential(
-            ConvLayer(LATENT_SPACE_4, LATENT_SPACE_4, kernel_size=3, stride=1),
-            torch.nn.BatchNorm2d(LATENT_SPACE_4, affine=True),
+            ConvLayer(64, 64, kernel_size=3, stride=1),
+            torch.nn.BatchNorm2d(64, affine=True),
             activation,
-            ConvLayer(LATENT_SPACE_4, LATENT_SPACE_4, kernel_size=3, stride=1),
-            torch.nn.BatchNorm2d(LATENT_SPACE_4, affine=True),
+            ConvLayer(64, 64, kernel_size=3, stride=1),
+            torch.nn.BatchNorm2d(64, affine=True),
             activation,
         )
 
@@ -149,11 +171,11 @@ class StanfordSupremeGenerator(torch.nn.Module):
         self.activation = activation
 
     def forward(self, x):
-        x = self.activation(self.norm1(self.conv1(x)))
-        e1 = self.activation(self.norm2(self.conv2(x)))
+        skip = self.activation(self.norm1(self.conv1(x)))
+        e1 = self.activation(self.norm2(self.conv2(skip)))
         e2 = self.activation(self.norm3(self.conv3(e1)))
         x = self.residual_blocks(e2)
         x = self.activation(self.norm4(self.deconv1(torch.cat([x, e2], dim=1))))
         x = self.activation(self.norm5(self.deconv2(torch.cat([x, e1], dim=1))))
-        x = self.final(x)
+        x = self.final(x + skip)
         return torch.tanh(x)

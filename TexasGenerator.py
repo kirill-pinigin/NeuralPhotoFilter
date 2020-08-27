@@ -44,23 +44,19 @@ class TexasResidualGenerator(nn.Module):
         return torch.tanh(final)
 
 
+class TexasSupremeGenerator(TexasResidualGenerator):
+    def __init__(self, dimension, deconv=UpsampleDeConv, activation=nn.LeakyReLU()):
+        super(TexasSupremeGenerator, self).__init__(dimension, deconv, activation)
+        self.fpn = DenseFPN(dimension=dimension, activation=activation)
+
+
 class ResidualFPN(nn.Module):
     def __init__(self, dimension, activation):
         super(ResidualFPN, self).__init__()
         self.activation = activation
         self.max_pool = nn.MaxPool2d(2, 2)
-        base_model = models.resnet18(pretrained=True)
+        base_model = models.resnet18(pretrained=False)
         conv = nn.Conv2d(dimension, LATENT_SPACE, kernel_size=7, stride=2, padding=3, bias=False)
-
-        if dimension == 1 or dimension == 3:
-            weight = torch.FloatTensor(64, dimension, 7, 7)
-            parameters = list(base_model.parameters())
-            for i in range(LATENT_SPACE):
-                if dimension == 1:
-                    weight[i, :, :, :] = parameters[0].data[i].mean(0)
-                else:
-                    weight[i, :, :, :] = parameters[0].data[i]
-            conv.weight.data.copy_(weight)
 
         self.encoder0 = nn.Sequential(
             conv,
@@ -102,5 +98,59 @@ class ResidualFPN(nn.Module):
         map3 = self.td1(lateral3 + nn.functional.interpolate(map4, scale_factor=2, mode="nearest"))
         map2 = self.td2(lateral2 + nn.functional.interpolate(map3, scale_factor=2, mode="nearest"))
         map1 = self.td3(lateral1 + nn.functional.interpolate(map2, scale_factor=2, mode="nearest"))
+        map0 = lateral0
+        return map0, map1, map2, map3, map4
+
+
+class DenseFPN(nn.Module):
+    def __init__(self, dimension, activation):
+        super(DenseFPN, self).__init__()
+        self.activation = activation
+        self.features = models.densenet121(pretrained=False).features
+        conv = nn.Conv2d(dimension, LATENT_SPACE, kernel_size=7, stride=2, padding=3, bias=False)
+
+        self.encoder0 = nn.Sequential(conv,
+                                  self.features.norm0,
+                                  self.features.relu0,
+                                  self.features.pool0)
+
+        self.encoder1 = self.features.denseblock1  # 256
+        self.encoder2 = self.features.denseblock2  # 512
+        self.encoder3 = self.features.denseblock3  # 1024
+        self.encoder4 = self.features.denseblock4  # 2048
+        self.norm = self.features.norm5  # 2048
+
+        self.tr1 = self.features.transition1  # 256
+        self.tr2 = self.features.transition2  # 512
+        self.tr3 = self.features.transition3  # 1024
+
+        self.lateral4 = ConvLayer(1024, LATENT_SPACE, kernel_size=1, bias=False)
+        self.lateral3 = ConvLayer(1024, LATENT_SPACE, kernel_size=1, bias=False)
+        self.lateral2 = ConvLayer(512,  LATENT_SPACE, kernel_size=1, bias=False)
+        self.lateral1 = ConvLayer(256,  LATENT_SPACE, kernel_size=1, bias=False)
+        self.lateral0 = ConvLayer(64,   LATENT_SPACE, kernel_size=1, bias=False)
+
+        for param in self.parameters():
+            param.requires_grad = True
+
+    def forward(self, x):
+        enc0 = self.encoder0(x)
+        enc1 = self.encoder1(enc0)  # 256
+        tr1 = self.tr1(enc1)
+        enc2 = self.encoder2(tr1)  # 512
+        tr2 = self.tr2(enc2)
+        enc3 = self.encoder3(tr2)  # 1024
+        tr3 = self.tr3(enc3)
+        enc4 = self.encoder4(tr3)  # 2048
+        enc4 = self.norm(enc4)
+        lateral4 = self.lateral4(enc4)
+        lateral3 = self.lateral3(enc3)
+        lateral2 = self.lateral2(enc2)
+        lateral1 = self.lateral1(enc1)
+        lateral0 = self.lateral0(enc0)
+        map4 = lateral4
+        map3 = lateral3 + nn.functional.interpolate(map4, scale_factor=2, mode="nearest")
+        map2 = lateral2 + nn.functional.interpolate(map3, scale_factor=2, mode="nearest")
+        map1 = lateral1 + nn.functional.interpolate(map2, scale_factor=2, mode="nearest")
         map0 = lateral0
         return map0, map1, map2, map3, map4

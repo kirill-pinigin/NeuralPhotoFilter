@@ -15,14 +15,14 @@ from NeuralBlocks import SILU, UpsampleDeConv, TransposedDeConv, PixelDeConv
 from NeuralPhotoFilter import NeuralPhotoFilter
 from SSIM import SSIM
 from StanfordGenerator import   StanfordGenerator, StanfordFastGenerator,  StanfordModernGenerator, StanfordStrongGenerator, StanfordSupremeGenerator
-from TexasGenerator import TexasResidualGenerator, TexasSupremeGenerator
+from TexasGenerator import TexasResidualGenerator
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--operation',         type = str,   default='MotionDeblur', help='type of deconvolution')
 parser.add_argument('--image_dir',         type = str,   default='./MotionDeblurMixedRealDataset300/', help='path to dataset')
 parser.add_argument('--dimension',         type = int,   default=3, help='must be equal 1 for grayscale or 3 for RGB')
 parser.add_argument('--image_size',        type = int,   default=256, help='pixel size of square image')
-parser.add_argument('--generator',         type = str,   default='TexasSupreme', help='type of image generator')
+parser.add_argument('--generator',         type = str,   default='TexasResidual', help='type of image generator')
 parser.add_argument('--criterion',         type = str,   default='DeblurWasserstein', help='type of criterion')
 parser.add_argument('--deconv',            type = str,   default='Upsample', help='type of deconv')
 parser.add_argument('--activation',        type = str,   default='ReLU', help='type of activation')
@@ -96,7 +96,6 @@ generator_types = {
                         'MovaviStrong'      : MovaviStrongGenerator,
                         'MovaviSupreme'     : MovaviSupremeGenerator,
                         'TexasResidual'     : TexasResidualGenerator,
-                        'TexasSupreme'      : TexasSupremeGenerator,
                     }
 
 deconv_types =      {

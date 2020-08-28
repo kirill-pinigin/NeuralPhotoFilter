@@ -8,6 +8,7 @@ from os import listdir
 from os.path import join
 import cv2
 from PIL import ImageFilter, ImageEnhance, Image
+from PyBlur import RandomizedBlur
 
 from DualTransform import DualComposeTransforms,  DualToTensor, DualRandomCrop, DualRandomHorizontalFlip, DualResize
 
@@ -176,14 +177,8 @@ class UpscalingDataset(DeblurDataset):
 
 
 class RandomBlur(object):
-    def __init__(self):
-        self.blurring_filters = [ImageFilter.GaussianBlur, ImageFilter.BoxBlur]
-        self.blurring_filters = [ImageFilter.BoxBlur, ImageFilter.GaussianBlur]
     def __call__(self, input):
-        index = int(random.uniform(0,  len(self.blurring_filters)))
-        radius = np.random.choice([0, 1, 2])
-        blurring_filter = self.blurring_filters[index](radius)
-        return input.filter(blurring_filter)
+        return RandomizedBlur(input)
 
     def __repr__(self):
         return self.__class__.__name__ + '(p={})'.format(self.blurring_filters)

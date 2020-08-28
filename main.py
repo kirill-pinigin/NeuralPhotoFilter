@@ -22,13 +22,14 @@ parser.add_argument('--operation',         type = str,   default='Deblur', help=
 parser.add_argument('--image_dir',         type = str,   default='./FlickrFaceDataset300/', help='path to dataset')
 parser.add_argument('--dimension',         type = int,   default=3, help='must be equal 1 for grayscale or 3 for RGB')
 parser.add_argument('--image_size',        type = int,   default=256, help='pixel size of square image')
-parser.add_argument('--generator',         type = str,   default='Texas', help='type of image generator')
-parser.add_argument('--criterion',         type = str,   default='DeblurSimple', help='type of criterion')
+parser.add_argument('--generator',         type = str,   default='MovaviSupreme', help='type of image generator')
+parser.add_argument('--criterion',         type = str,   default='Chroma', help='type of criterion')
 parser.add_argument('--deconv',            type = str,   default='Upsample', help='type of deconv')
 parser.add_argument('--activation',        type = str,   default='ReLU', help='type of activation')
 parser.add_argument('--optimizer',         type = str,   default='Adam', help='type of optimizer')
 parser.add_argument('--batch_size',        type = int,   default=256)
 parser.add_argument('--epochs',            type = int,   default=256)
+parser.add_argument('--drop_out',          type = float, default=0.5)
 parser.add_argument('--resume_train',      type = bool,  default=True)
 
 args = parser.parse_args()
@@ -124,7 +125,7 @@ accuracy = SSIM(args.dimension)
 model = generator_types[args.generator]
 deconvLayer = (deconv_types[args.deconv] if args.deconv in deconv_types else deconv_types['upsample'])
 function = (activation_types[args.activation] if args.activation in activation_types else activation_types['Leaky'])
-generator = model(dimension=args.dimension, deconv=deconvLayer, activation=function)
+generator = model(dimension=args.dimension, deconv=deconvLayer, activation=function, drop_out=args.drop_out)
 criterion = criterion_types[args.criterion](dimension=args.dimension)
 deconvolution_dataset = operation_types[args.operation]
 

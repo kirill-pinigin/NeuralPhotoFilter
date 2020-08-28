@@ -8,7 +8,7 @@ LATENT_SPACE = 64
 
 
 class TexasGenerator(nn.Module):
-    def __init__(self, dimension, deconv=UpsampleDeConv, activation=nn.LeakyReLU()):
+    def __init__(self, dimension, deconv=UpsampleDeConv, activation=nn.LeakyReLU(), drop_out : float = 0.5):
         super(TexasGenerator, self).__init__()
         self.fpn = FPN(dimension=dimension, activation = activation, pretrained=False)
         self.head1 = nn.Sequential(ConvLayer(LATENT_SPACE, LATENT_SPACE, kernel_size=3, bias=False), activation,
@@ -19,8 +19,8 @@ class TexasGenerator(nn.Module):
                                    ConvLayer(LATENT_SPACE, LATENT_SPACE, kernel_size=3, bias=False), activation)
         self.head4 = nn.Sequential(ConvLayer(LATENT_SPACE, LATENT_SPACE, kernel_size=3, bias=False), activation,
                                    ConvLayer(LATENT_SPACE, LATENT_SPACE, kernel_size=3, bias=False), activation)
-        self.smooth1 = BaseBlock(4 * LATENT_SPACE, LATENT_SPACE, kernel_size=3, stride=1, bias=True, activation=activation)
-        self.smooth2 = BaseBlock(1 * LATENT_SPACE, LATENT_SPACE, kernel_size=3, stride= 1, bias=True, activation=activation)
+        self.smooth1 = BaseBlock(4 * LATENT_SPACE, LATENT_SPACE, kernel_size=3, stride=1, bias=True, activation=activation, drop_out=drop_out)
+        self.smooth2 = BaseBlock(1 * LATENT_SPACE, LATENT_SPACE, kernel_size=3, stride= 1, bias=True, activation=activation, drop_out=drop_out)
         self.deconv1 = deconv(LATENT_SPACE, dimension)
         self.activation = activation
 
@@ -45,7 +45,7 @@ with change of backbone because mobile is not export to ONNX
 '''
 
 class TexasResidualGenerator(TexasGenerator):
-    def __init__(self, dimension, deconv=UpsampleDeConv, activation=nn.LeakyReLU()):
+    def __init__(self, dimension, deconv=UpsampleDeConv, activation=nn.LeakyReLU(), drop_out : float = 0.5):
         super(TexasResidualGenerator, self).__init__(dimension, deconv, activation)
         self.fpn = FPN(dimension=dimension, activation = activation, pretrained=True)
 
@@ -83,9 +83,9 @@ class FPN(nn.Module):
         self.encoder3 = base_model.layer3
         self.encoder4 = base_model.layer4
 
-        self.td1 = BaseBlock(LATENT_SPACE, LATENT_SPACE, kernel_size=3, stride= 1, bias=True, activation=activation)
-        self.td2 = BaseBlock(LATENT_SPACE, LATENT_SPACE, kernel_size=3, stride= 1, bias=True, activation=activation)
-        self.td3 = BaseBlock(LATENT_SPACE, LATENT_SPACE, kernel_size=3, stride= 1, bias=True, activation=activation)
+        self.td1 = BaseBlock(LATENT_SPACE, LATENT_SPACE, kernel_size=3, stride= 1, bias=True, activation=activation, drop_out=drop_out)
+        self.td2 = BaseBlock(LATENT_SPACE, LATENT_SPACE, kernel_size=3, stride= 1, bias=True, activation=activation, drop_out=drop_out)
+        self.td3 = BaseBlock(LATENT_SPACE, LATENT_SPACE, kernel_size=3, stride= 1, bias=True, activation=activation, drop_out=drop_out)
 
         self.lateral4 = ConvLayer(512, LATENT_SPACE, kernel_size=1, bias=False)
         self.lateral3 = ConvLayer(256, LATENT_SPACE, kernel_size=1, bias=False)

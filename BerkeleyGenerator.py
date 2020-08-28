@@ -12,7 +12,7 @@ Berkeley AI Research (BAIR) Laboratory, UC Berkeley
 '''
 
 class BerkeleyGenerator(torch.nn.Module):
-    def __init__(self,dimension,  deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
+    def __init__(self,dimension,  deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
         super(BerkeleyGenerator, self).__init__()
         self.layer1  = SimpleEncoder(dimension, 64, bn = False)
         self.layer2  = SimpleEncoder(64,  128)
@@ -54,8 +54,8 @@ class BerkeleyGenerator(torch.nn.Module):
 
 
 class BerkeleyFastGenerator(BerkeleyGenerator):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(BerkeleyFastGenerator, self).__init__(dimension, deconv, activation)
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(BerkeleyFastGenerator, self).__init__(dimension, deconv, activation, drop_out)
         self.layer1  = ResidualBlock(dimension, 16,  stride = 2, activation=activation)
         self.layer2  = ResidualBlock(16,  32,       stride = 2, activation=activation)
         self.layer3  = ResidualBlock(32, 64,        stride = 2, activation=activation)
@@ -71,8 +71,8 @@ class BerkeleyFastGenerator(BerkeleyGenerator):
 
 
 class BerkeleyResidualGenerator(BerkeleyGenerator):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(BerkeleyResidualGenerator, self).__init__(dimension, deconv, activation)
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(BerkeleyResidualGenerator, self).__init__(dimension, deconv, activation, drop_out)
         self.layer1  = ResidualBlock(dimension, 64,  stride = 2, activation = activation)
         self.layer2  = ResidualBlock(64,  128,      stride = 2, activation = activation)
         self.layer3  = ResidualBlock(128, 256,      stride = 2, activation = activation)
@@ -82,8 +82,8 @@ class BerkeleyResidualGenerator(BerkeleyGenerator):
 
 
 class BerkeleySupremeGenerator(BerkeleyResidualGenerator):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(BerkeleySupremeGenerator, self).__init__(dimension, deconv, activation)
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(BerkeleySupremeGenerator, self).__init__(dimension, deconv, activation, drop_out)
         self.skip1 = BaseBlock(128, 128, 3, 1, activation=activation)
         self.skip2 = BaseBlock(256, 256, 3, 1, activation=activation)
         self.skip3 = BaseBlock(512, 512, 3, 1, activation=activation)

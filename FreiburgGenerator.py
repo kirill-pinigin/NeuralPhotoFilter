@@ -15,23 +15,23 @@ University of Freiburg, Germany
 '''
 
 class FreiburgGenerator(torch.nn.Module):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
         super(FreiburgGenerator, self).__init__()
-        self.enc1   = FreiburgDoubleBlock(dimension, 64, activation)
-        self.enc2   = FreiburgDoubleBlock(64,  128, activation)
-        self.enc3   = FreiburgDoubleBlock(128, 256, activation)
-        self.enc4   = FreiburgDoubleBlock(256, 512, activation)
+        self.enc1   = FreiburgDoubleBlock(dimension, 64, activation, drop_out=drop_out)
+        self.enc2   = FreiburgDoubleBlock(64,  128, activation, drop_out=drop_out)
+        self.enc3   = FreiburgDoubleBlock(128, 256, activation, drop_out=drop_out)
+        self.enc4   = FreiburgDoubleBlock(256, 512, activation, drop_out=drop_out)
 
         self.center = FreiburgDoubleBlock(512, 1024)
 
         self.deconv4 = deconv(1024, 512)
-        self.dec4  = FreiburgSingleBlock(1024, 512, activation = activation)
+        self.dec4  = FreiburgSingleBlock(1024, 512, activation = activation, drop_out=drop_out)
         self.deconv3 = deconv(512, 256)
-        self.dec3  = FreiburgSingleBlock(512,  256, activation = activation)
+        self.dec3  = FreiburgSingleBlock(512,  256, activation = activation, drop_out=drop_out)
         self.deconv2 = deconv(256, 128)
-        self.dec2  = FreiburgSingleBlock(256,  128, activation = activation)
+        self.dec2  = FreiburgSingleBlock(256,  128, activation = activation, drop_out=drop_out)
         self.deconv1 = deconv(128, 64)
-        self.dec1  = FreiburgSingleBlock(128,   64, activation = activation)
+        self.dec1  = FreiburgSingleBlock(128,   64, activation = activation, drop_out=drop_out)
         self.final  = ConvLayer(64, dimension, 1)
         self.activation = activation
         self.max_pool = nn.MaxPool2d(kernel_size=2, stride=2)
@@ -66,29 +66,29 @@ class FreiburgGenerator(torch.nn.Module):
 
 
 class FreiburgFastGenerator(FreiburgGenerator):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(FreiburgFastGenerator, self).__init__(dimension, deconv, activation)
-        self.enc1   = FreiburgDoubleBlock(dimension, 32, activation)
-        self.enc2   = FreiburgDoubleBlock(32,  64, activation)
-        self.enc3   = FreiburgDoubleBlock(64, 128, activation)
-        self.enc4   = FreiburgDoubleBlock(128, 256, activation)
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(FreiburgFastGenerator, self).__init__(dimension, deconv, activation, drop_out)
+        self.enc1   = FreiburgDoubleBlock(dimension, 32, activation, drop_out=drop_out)
+        self.enc2   = FreiburgDoubleBlock(32,  64, activation, drop_out=drop_out)
+        self.enc3   = FreiburgDoubleBlock(64, 128, activation, drop_out=drop_out)
+        self.enc4   = FreiburgDoubleBlock(128, 256, activation, drop_out=drop_out)
 
         self.center = FreiburgDoubleBlock(256, 512)
 
         self.deconv4 = deconv(512, 256)
-        self.dec4  = FreiburgSingleBlock(512, 256, activation = activation)
+        self.dec4  = FreiburgSingleBlock(512, 256, activation = activation, drop_out=drop_out)
         self.deconv3 = deconv(256, 128)
-        self.dec3  = FreiburgSingleBlock(256,  128, activation = activation)
+        self.dec3  = FreiburgSingleBlock(256,  128, activation = activation, drop_out=drop_out)
         self.deconv2 = deconv(128, 64)
-        self.dec2  = FreiburgSingleBlock(128,  64, activation = activation)
+        self.dec2  = FreiburgSingleBlock(128,  64, activation = activation, drop_out=drop_out)
         self.deconv1 = deconv(64, 32)
-        self.dec1  = FreiburgSingleBlock(64,   32, activation = activation)
+        self.dec1  = FreiburgSingleBlock(64,   32, activation = activation, drop_out=drop_out)
         self.final  = ConvLayer(32, dimension, 1)
 
 
 class FreiburgAttentiveGenerator(FreiburgFastGenerator):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(FreiburgAttentiveGenerator, self).__init__(dimension, deconv, activation)
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(FreiburgAttentiveGenerator, self).__init__(dimension, deconv, activation, drop_out)
         self.atb4 = AttentionBlock(256, 128)
         self.atb3 = AttentionBlock(128, 64)
         self.atb2 = AttentionBlock(64, 32)
@@ -128,15 +128,15 @@ class FreiburgAttentiveGenerator(FreiburgFastGenerator):
 
 
 class FreiburgModernGenerator(FreiburgAttentiveGenerator):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(FreiburgModernGenerator, self).__init__(dimension, deconv, activation)
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(FreiburgModernGenerator, self).__init__(dimension, deconv, activation, drop_out)
 
     def forward(self, x):
         return super(FreiburgModernGenerator, self).forward(x) + x
 
 
 class FreiburgResidualGenerator(nn.Module):
-    def __init__(self, dimension, deconv=UpsampleDeConv, activation=nn.LeakyReLU()):
+    def __init__(self, dimension, deconv=UpsampleDeConv, activation=nn.LeakyReLU(), drop_out : float = 0.5):
         super(FreiburgResidualGenerator, self).__init__()
         self.activation = activation
         self.max_pool = nn.MaxPool2d(2, 2)
@@ -166,18 +166,18 @@ class FreiburgResidualGenerator(nn.Module):
         self.encoder4 = base_model.layer4
 
         self.deconv_center = deconv(512, 512)
-        self.center = FreiburgSingleBlock(512, 256, activation=activation)
+        self.center = FreiburgSingleBlock(512, 256, activation=activation, drop_out=drop_out)
 
         self.deconv5 = deconv(768, 512)
-        self.decoder5 = FreiburgSingleBlock(512, 256, activation=activation)
+        self.decoder5 = FreiburgSingleBlock(512, 256, activation=activation, drop_out=drop_out)
         self.deconv4 = deconv(512, 512)
-        self.decoder4 = FreiburgSingleBlock(512, 256, activation=activation)
+        self.decoder4 = FreiburgSingleBlock(512, 256, activation=activation, drop_out=drop_out)
         self.deconv3 = deconv(384, 256)
-        self.decoder3 = FreiburgSingleBlock(256, 64, activation=activation)
+        self.decoder3 = FreiburgSingleBlock(256, 64, activation=activation, drop_out=drop_out)
         self.deconv2 = deconv(128, 128)
-        self.decoder2 = FreiburgSingleBlock(128, 128, activation=activation)
+        self.decoder2 = FreiburgSingleBlock(128, 128, activation=activation, drop_out=drop_out)
         self.deconv1 = deconv(128, 128)
-        self.decoder1 = FreiburgSingleBlock(128, 32, activation=activation)
+        self.decoder1 = FreiburgSingleBlock(128, 32, activation=activation, drop_out=drop_out)
         self.decoder0 = nn.Conv2d(32, 32, 3, padding=1)
         self.final = ConvLayer(32, dimension, 1)
         self.activation = activation
@@ -234,8 +234,8 @@ class FreiburgResidualGenerator(nn.Module):
 
 
 class FreiburgSqueezeGenerator(FreiburgGenerator):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(FreiburgSqueezeGenerator, self).__init__(dimension, deconv, activation)
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(FreiburgSqueezeGenerator, self).__init__(dimension, deconv, activation, drop_out)
         pretrained_features = models.squeezenet1_1(pretrained=True).features
         conv = ConvLayer(dimension, 64, kernel_size=3, stride=1, bias=True)
 
@@ -267,13 +267,13 @@ class FreiburgSqueezeGenerator(FreiburgGenerator):
 
 
 class FreiburgSupremeGenerator(FreiburgResidualGenerator):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(FreiburgSupremeGenerator, self).__init__(dimension, deconv, activation)
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(FreiburgSupremeGenerator, self).__init__(dimension, deconv, activation, drop_out)
         self.DEPTH_SIZE = 3
-        self.skip1 = BaseBlock(64, 64, 3, 1, activation=activation)
-        self.skip2 = BaseBlock(128, 128, 3, 1, activation=activation)
-        self.skip3 = BaseBlock(256, 256, 3, 1, activation=activation)
-        self.skip4 = BaseBlock(512, 512, 3, 1, activation=activation)
+        self.skip1 = BaseBlock(64, 64, 3, 1, activation=activation, drop_out=drop_out)
+        self.skip2 = BaseBlock(128, 128, 3, 1, activation=activation, drop_out=drop_out)
+        self.skip3 = BaseBlock(256, 256, 3, 1, activation=activation, drop_out=drop_out)
+        self.skip4 = BaseBlock(512, 512, 3, 1, activation=activation, drop_out=drop_out)
 
     def forward(self, x):
         enc0 = self.encoder0(x)
@@ -295,7 +295,7 @@ class FreiburgSupremeGenerator(FreiburgResidualGenerator):
 
 
 class FreiburgTernauGenerator(nn.Module):
-    def __init__(self, dimension, deconv=UpsampleDeConv, activation=nn.LeakyReLU()):
+    def __init__(self, dimension, deconv=UpsampleDeConv, activation=nn.LeakyReLU(), drop_out : float = 0.5):
         super(FreiburgTernauGenerator, self).__init__()
         self.activation = activation
         base_model = models.vgg11(pretrained=True).features
@@ -333,16 +333,16 @@ class FreiburgTernauGenerator(nn.Module):
             self.encoder5.add_module(str(x), base_model[x])
 
         self.deconv1= deconv(512, 512)
-        self.center = FreiburgSingleBlock(512, 256, activation=activation)
+        self.center = FreiburgSingleBlock(512, 256, activation=activation, drop_out=drop_out)
 
         self.deconv5 = deconv(768, 512)
-        self.decoder5 = FreiburgSingleBlock(512, 256, activation=activation)
+        self.decoder5 = FreiburgSingleBlock(512, 256, activation=activation, drop_out=drop_out)
         self.deconv4 = deconv(768, 512)
-        self.decoder4 = FreiburgSingleBlock(512, 128, activation=activation)
+        self.decoder4 = FreiburgSingleBlock(512, 128, activation=activation, drop_out=drop_out)
         self.deconv3 = deconv(384, 256)
-        self.decoder3 = FreiburgSingleBlock(256, 64, activation=activation)
+        self.decoder3 = FreiburgSingleBlock(256, 64, activation=activation, drop_out=drop_out)
         self.deconv2 = deconv(192, 128)
-        self.decoder2 = FreiburgSingleBlock(128, 32, activation=activation)
+        self.decoder2 = FreiburgSingleBlock(128, 32, activation=activation, drop_out=drop_out)
         self.decoder1 = nn.Conv2d(96, 32, 3, padding=1)
 
         self.final = ConvLayer(32, dimension, 1)
@@ -369,16 +369,16 @@ class FreiburgTernauGenerator(nn.Module):
 
 
 class FreiburgDoubleBlock(nn.Sequential):
-    def __init__(self, in_size, out_size, activation=nn.LeakyReLU(0.2)):
+    def __init__(self, in_size, out_size, activation=nn.LeakyReLU(0.2), drop_out : float = 0.5):
         super(FreiburgDoubleBlock, self).__init__(
-            BaseBlock(in_size,  out_size, 3, 1, activation=activation),
-            BaseBlock(out_size, out_size, 3, 1, activation=activation),
+            BaseBlock(in_size,  out_size, 3, 1, activation=activation, drop_out=drop_out),
+            BaseBlock(out_size, out_size, 3, 1, activation=activation, drop_out=drop_out),
         )
 
 
 class FreiburgSingleBlock(nn.Sequential):
-    def __init__(self, in_size, out_size, activation=nn.LeakyReLU(0.2)):
+    def __init__(self, in_size, out_size, activation=nn.LeakyReLU(0.2), drop_out : float = 0.5):
         super(FreiburgSingleBlock, self).__init__(
             activation,
-            BaseBlock(in_size, out_size, 3, 1, activation=activation),
+            BaseBlock(in_size, out_size, 3, 1, activation=activation, drop_out=drop_out),
         )

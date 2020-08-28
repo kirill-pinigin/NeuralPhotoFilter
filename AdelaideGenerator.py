@@ -12,13 +12,13 @@ Xiao-Jiao Mao, Chunhua Shen, Yu-Bin Yang
 '''
 
 class AdelaideGenerator(torch.nn.Module):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
         super(AdelaideGenerator, self).__init__()
         self.enc1 = SimpleEncoder(dimension, 64, activation)
-        self.enc2 = SimpleEncoder(64,  128,activation)
-        self.enc3 = SimpleEncoder(128, 256,activation)
-        self.enc4 = SimpleEncoder(256, 512,activation)
-        self.enc5 = SimpleEncoder(512, 512,activation)
+        self.enc2 = SimpleEncoder(64,  128, activation)
+        self.enc3 = SimpleEncoder(128, 256, activation)
+        self.enc4 = SimpleEncoder(256, 512, activation)
+        self.enc5 = SimpleEncoder(512, 512, activation)
         self.dec1 = SimpleDecoder(512, 512, deconv=deconv)
         self.dec2 = SimpleDecoder(512, 256, deconv=deconv)
         self.dec3 = SimpleDecoder(256, 128, deconv=deconv)
@@ -48,8 +48,8 @@ class AdelaideGenerator(torch.nn.Module):
 
 
 class AdelaideFastGenerator(AdelaideGenerator):
-    def __init__(self,dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(AdelaideFastGenerator, self).__init__(dimension, deconv, activation)
+    def __init__(self,dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(AdelaideFastGenerator, self).__init__(dimension, deconv, activation, drop_out)
         self.enc1 = ResidualBlock(dimension, 16, stride = 2, activation=activation)
         self.enc2 = ResidualBlock(16,  32,      stride = 2,  activation=activation)
         self.enc3 = ResidualBlock(32, 64,       stride = 2,   activation=activation)
@@ -63,8 +63,8 @@ class AdelaideFastGenerator(AdelaideGenerator):
 
 
 class AdelaideResidualGenerator(AdelaideGenerator):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(AdelaideResidualGenerator, self).__init__(dimension, deconv, activation)
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(AdelaideResidualGenerator, self).__init__(dimension, deconv, activation, drop_out)
         self.enc1 = ResidualBlock(dimension, 64, stride = 2,activation=activation)
         self.enc2 = ResidualBlock(64,  128,     stride = 2,activation=activation)
         self.enc3 = ResidualBlock(128, 256,     stride = 2,activation=activation)
@@ -73,8 +73,8 @@ class AdelaideResidualGenerator(AdelaideGenerator):
 
 
 class AdelaideSupremeGenerator(AdelaideResidualGenerator):
-    def __init__(self,dimension,  deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(AdelaideSupremeGenerator, self).__init__(dimension, deconv, activation)
+    def __init__(self,dimension,  deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(AdelaideSupremeGenerator, self).__init__(dimension, deconv, activation, drop_out)
         self.skip1 = BaseBlock(64, 64, 3, 1, activation=activation)
         self.skip2 = BaseBlock(128, 128, 3, 1, activation=activation)
         self.skip3 = BaseBlock(256, 256, 3, 1, activation=activation)

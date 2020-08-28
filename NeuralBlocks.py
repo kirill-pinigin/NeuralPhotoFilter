@@ -167,12 +167,12 @@ class AttentionBlock(nn.Module):
 
 
 class BaseBlock(torch.nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, activation = Identity(), bias = False ):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, activation = Identity(), bias = False, drop_out : float = 0.5):
         super(BaseBlock, self).__init__()
         self.model = nn.Sequential(
             ConvLayer(in_channels, out_channels, kernel_size, stride, bias),
             nn.BatchNorm2d(out_channels, affine=True),
-            nn.Dropout(),
+            nn.Dropout(drop_out),
             activation,
         )
 
@@ -211,7 +211,7 @@ class PixelDeConv(torch.nn.Module):
 
 
 class ResidualBlock(torch.nn.Module):
-    def __init__(self, in_channels, out_channels, stride = 1, activation = nn.LeakyReLU(0.2)):
+    def __init__(self, in_channels, out_channels, stride = 1, activation = nn.LeakyReLU(0.2), drop_out : float = 0.5):
         super(ResidualBlock, self).__init__()
         self.conv1 = BaseBlock(in_channels,  out_channels, kernel_size=3, stride=stride, activation = activation)
         self.conv2 = BaseBlock(out_channels, out_channels, kernel_size=3, stride=1)
@@ -225,14 +225,14 @@ class ResidualBlock(torch.nn.Module):
 
 
 class SimpleEncoder(nn.Module):
-    def __init__(self, in_size, out_size, activation=nn.LeakyReLU(0.2), bn = True):
+    def __init__(self, in_size, out_size, activation=nn.LeakyReLU(0.2), bn = True, drop_out : float = 0.5):
         super(SimpleEncoder, self).__init__()
         layers = [ConvLayer(in_size, out_size, 3, 2)]
 
         if bn:
             layers +=[nn.BatchNorm2d(out_size)]
 
-        layers +=[activation]
+        layers +=[nn.Dropout(drop_out), activation]
 
         self.model = nn.Sequential(*layers)
 
@@ -242,10 +242,11 @@ class SimpleEncoder(nn.Module):
 
 
 class SimpleDecoder(nn.Module):
-    def __init__(self, in_size, out_size, deconv= UpsampleDeConv):
+    def __init__(self, in_size, out_size, deconv= UpsampleDeConv, drop_out : float = 0.5):
         super(SimpleDecoder, self).__init__()
         layers = [deconv(in_size, out_size),
-                  nn.BatchNorm2d(out_size)]
+                  nn.BatchNorm2d(out_size),
+                  nn.Dropout(drop_out)]
 
         self.model = nn.Sequential(*layers)
 

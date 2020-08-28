@@ -5,20 +5,20 @@ from NeuralBlocks import BaseBlock, ConvLayer, ResidualBlock, UpsampleDeConv
 
 
 class MovaviGenerator(torch.nn.Module):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
         super(MovaviGenerator, self).__init__()
         self.deconv1 = deconv
         self.activation = activation
-        self.enc1   = BaseBlock(dimension, 16, 3, 2, activation=activation)
-        self.enc2   = nn.Sequential(BaseBlock(16,  16, 3, 1, activation=activation), BaseBlock(16,  16, 3, 1, activation=activation), ConvLayer(16,   32, 3, 2))
-        self.enc3   = nn.Sequential(BaseBlock(32,  32, 3, 1, activation=activation), BaseBlock(32,  32, 3, 1, activation=activation), ConvLayer(32,   64, 3, 2))
-        self.enc4   = nn.Sequential(BaseBlock(64,  64, 3, 1, activation=activation), BaseBlock(64,  64, 3, 1, activation=activation), ConvLayer(64,  128, 3, 2))
-        self.enc5   = nn.Sequential(BaseBlock(128,128, 3, 1, activation=activation), BaseBlock(128,128, 3, 1, activation=activation), ConvLayer(128, 128, 3, 2))
-        self.center = nn.Sequential(BaseBlock(128,128, 3, 1, activation=activation), BaseBlock(128,128, 3, 1, activation=activation))
-        self.dec6   = nn.Sequential(BaseBlock(256,128, 3, 1, activation=activation), BaseBlock(128,128, 3, 1, activation=activation), deconv(128, 64))
-        self.dec7   = nn.Sequential(BaseBlock(192, 64, 3, 1, activation=activation), BaseBlock(64,  64, 3, 1, activation=activation), deconv(64,  32))
-        self.dec8   = nn.Sequential(BaseBlock(96,  32, 3, 1, activation=activation), BaseBlock(32,  32, 3, 1, activation=activation), deconv(32,  16))
-        self.dec9   = nn.Sequential(BaseBlock(48,  16, 3, 1, activation=activation), BaseBlock(16,  16, 3, 1, activation=activation), deconv(16,  16))
+        self.enc1   = BaseBlock(dimension, 16, 3, 2, activation=activation, drop_out=drop_out)
+        self.enc2   = nn.Sequential(BaseBlock(16,  16, 3, 1, activation=activation, drop_out=drop_out), BaseBlock(16,  16, 3, 1, activation=activation, drop_out=drop_out), ConvLayer(16,   32, 3, 2))
+        self.enc3   = nn.Sequential(BaseBlock(32,  32, 3, 1, activation=activation, drop_out=drop_out), BaseBlock(32,  32, 3, 1, activation=activation, drop_out=drop_out), ConvLayer(32,   64, 3, 2))
+        self.enc4   = nn.Sequential(BaseBlock(64,  64, 3, 1, activation=activation, drop_out=drop_out), BaseBlock(64,  64, 3, 1, activation=activation, drop_out=drop_out), ConvLayer(64,  128, 3, 2))
+        self.enc5   = nn.Sequential(BaseBlock(128,128, 3, 1, activation=activation, drop_out=drop_out), BaseBlock(128,128, 3, 1, activation=activation, drop_out=drop_out), ConvLayer(128, 128, 3, 2))
+        self.center = nn.Sequential(BaseBlock(128,128, 3, 1, activation=activation, drop_out=drop_out), BaseBlock(128,128, 3, 1, activation=activation, drop_out=drop_out))
+        self.dec6   = nn.Sequential(BaseBlock(256,128, 3, 1, activation=activation, drop_out=drop_out), BaseBlock(128,128, 3, 1, activation=activation, drop_out=drop_out), deconv(128, 64))
+        self.dec7   = nn.Sequential(BaseBlock(192, 64, 3, 1, activation=activation, drop_out=drop_out), BaseBlock(64,  64, 3, 1, activation=activation, drop_out=drop_out), deconv(64,  32))
+        self.dec8   = nn.Sequential(BaseBlock(96,  32, 3, 1, activation=activation, drop_out=drop_out), BaseBlock(32,  32, 3, 1, activation=activation, drop_out=drop_out), deconv(32,  16))
+        self.dec9   = nn.Sequential(BaseBlock(48,  16, 3, 1, activation=activation, drop_out=drop_out), BaseBlock(16,  16, 3, 1, activation=activation, drop_out=drop_out), deconv(16,  16))
         self.dec10 = deconv(16, 16)
         self.final = ConvLayer(16, dimension, 3, 1)
 
@@ -43,8 +43,8 @@ class MovaviGenerator(torch.nn.Module):
 
 
 class MovaviFastGenerator(MovaviGenerator):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(MovaviFastGenerator, self).__init__(dimension, deconv, activation)
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(MovaviFastGenerator, self).__init__(dimension, deconv, activation, drop_out)
 
     def forward(self, x):
         enc1 = self.enc1(x)
@@ -67,34 +67,34 @@ class MovaviFastGenerator(MovaviGenerator):
 
 
 class MovaviResidualGenerator(MovaviGenerator):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(MovaviResidualGenerator, self).__init__(dimension, deconv, activation)
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(MovaviResidualGenerator, self).__init__(dimension, deconv, activation, drop_out)
         self.enc1 = ResidualBlock(dimension, 16,  activation = activation, stride=2)
-        self.enc2 = ResidualBlock(16, 32, activation = activation, stride=2)
-        self.enc3 = ResidualBlock(32, 64, activation = activation, stride=2)
-        self.enc4 = ResidualBlock(64, 128, activation = activation, stride=2)
-        self.enc5 = ResidualBlock(128, 128,  activation = activation, stride=2)
-        self.center = ResidualBlock(128, 128,  activation = activation, stride=1)
+        self.enc2 = ResidualBlock(16, 32,         activation = activation, stride=2, drop_out=drop_out)
+        self.enc3 = ResidualBlock(32, 64,         activation = activation, stride=2, drop_out=drop_out)
+        self.enc4 = ResidualBlock(64, 128,        activation = activation, stride=2, drop_out=drop_out)
+        self.enc5 = ResidualBlock(128, 128,       activation = activation, stride=2, drop_out=drop_out)
+        self.center = ResidualBlock(128, 128,     activation = activation, stride=1, drop_out=drop_out)
 
 
 class MovaviStrongGenerator(MovaviResidualGenerator):
-    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(MovaviStrongGenerator, self).__init__(dimension, deconv, activation)
-        self.enc1 = ResidualBlock(dimension, 32, activation=activation, stride=2)
-        self.enc2 = ResidualBlock(32, 64, activation=activation, stride=2)
-        self.enc3 = ResidualBlock(64, 128, activation=activation, stride=2)
-        self.enc4 = ResidualBlock(128, 256, activation=activation, stride=2)
-        self.enc5 = ResidualBlock(256, 256, activation=activation, stride=2)
-        self.center = ResidualBlock(256, 256, activation=activation, stride=1)
+    def __init__(self, dimension, deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(MovaviStrongGenerator, self).__init__(dimension, deconv, activation, drop_out)
+        self.enc1 = ResidualBlock(dimension, 32, activation=activation, stride=2, drop_out=drop_out)
+        self.enc2 = ResidualBlock(32, 64,        activation=activation, stride=2, drop_out=drop_out)
+        self.enc3 = ResidualBlock(64, 128,       activation=activation, stride=2, drop_out=drop_out)
+        self.enc4 = ResidualBlock(128, 256,      activation=activation, stride=2, drop_out=drop_out)
+        self.enc5 = ResidualBlock(256, 256,      activation=activation, stride=2, drop_out=drop_out)
+        self.center = ResidualBlock(256, 256,    activation=activation, stride=1, drop_out=drop_out)
 
-        self.dec6 = nn.Sequential(BaseBlock(512, 256, 3, 1, activation=activation),
-                                  BaseBlock(256, 256, 3, 1, activation=activation), deconv(256, 128))
-        self.dec7 = nn.Sequential(BaseBlock(384, 128, 3, 1, activation=activation),
-                                  BaseBlock(128, 128, 3, 1, activation=activation), deconv(128, 64))
-        self.dec8 = nn.Sequential(BaseBlock(192, 64, 3, 1, activation=activation),
-                                  BaseBlock(64, 64, 3, 1, activation=activation), deconv(64, 32))
-        self.dec9 = nn.Sequential(BaseBlock(96, 32, 3, 1, activation=activation),
-                                  BaseBlock(32, 32, 3, 1, activation=activation), deconv(32, 32))
+        self.dec6 = nn.Sequential(BaseBlock(512, 256, 3, 1, activation=activation, drop_out=drop_out),
+                                  BaseBlock(256, 256, 3, 1, activation=activation, drop_out=drop_out), deconv(256, 128))
+        self.dec7 = nn.Sequential(BaseBlock(384, 128, 3, 1, activation=activation, drop_out=drop_out),
+                                  BaseBlock(128, 128, 3, 1, activation=activation, drop_out=drop_out), deconv(128, 64))
+        self.dec8 = nn.Sequential(BaseBlock(192, 64, 3, 1,  activation=activation, drop_out=drop_out),
+                                  BaseBlock(64, 64, 3, 1,   activation=activation, drop_out=drop_out), deconv(64, 32))
+        self.dec9 = nn.Sequential(BaseBlock(96, 32, 3, 1,   activation=activation, drop_out=drop_out),
+                                  BaseBlock(32, 32, 3, 1,   activation=activation, drop_out=drop_out), deconv(32, 32))
         self.dec10 = deconv(32, 32)
         self.final = ConvLayer(32, dimension, 3, 1)
 
@@ -119,13 +119,13 @@ class MovaviStrongGenerator(MovaviResidualGenerator):
 
 
 class MovaviSupremeGenerator(MovaviStrongGenerator):
-    def __init__(self,dimension,  deconv = UpsampleDeConv, activation = nn.LeakyReLU()):
-        super(MovaviSupremeGenerator, self).__init__(dimension, deconv, activation)
+    def __init__(self,dimension,  deconv = UpsampleDeConv, activation = nn.LeakyReLU(), drop_out : float = 0.5):
+        super(MovaviSupremeGenerator, self).__init__(dimension, deconv, activation, drop_out)
 
-        self.skip1 = BaseBlock(64, 64, 3, 1, activation=activation)
-        self.skip2 = BaseBlock(128, 128, 3, 1, activation=activation)
-        self.skip3 = BaseBlock(256, 256, 3, 1, activation=activation)
-        self.skip4 = BaseBlock(256, 256, 3, 1, activation=activation)
+        self.skip1 = BaseBlock(64, 64, 3, 1,    activation=activation, drop_out=drop_out)
+        self.skip2 = BaseBlock(128, 128, 3, 1,  activation=activation, drop_out=drop_out)
+        self.skip3 = BaseBlock(256, 256, 3, 1,  activation=activation, drop_out=drop_out)
+        self.skip4 = BaseBlock(256, 256, 3, 1,  activation=activation, drop_out=drop_out)
 
     def forward(self, x):
         enc1 = self.enc1(x)

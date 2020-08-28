@@ -2,7 +2,6 @@
 import numpy as np
 import pickle
 from PIL import Image
-from scipy.signal import convolve2d
 import os.path
 import cv2
 

@@ -6,18 +6,11 @@ from NeuralBlocks import BaseBlock, UpsampleDeConv, ConvLayer
 
 LATENT_SPACE = 64
 
-'''DeblurGAN-v2: Deblurring (Orders-of-Magnitude) Faster and BetterOrest 
-Kupyn1, 3, Tetiana Martyniuk1, Junru Wu2, Zhangyang Wang21Ukrainian Catholic University, Lviv, Ukraine;3SoftServe, 
-Lviv, Ukraine{kupyn, t.martynyuk}@ucu.edu.ua2Department of Computer Science and Engineering, 
-Texas A&M University{sandboxmaster, atlaswang}@tamu.edu
 
-with change of backbone because mobile is not export to ONNX
-'''
-
-class TexasResidualGenerator(nn.Module):
+class TexasGenerator(nn.Module):
     def __init__(self, dimension, deconv=UpsampleDeConv, activation=nn.LeakyReLU()):
-        super(TexasResidualGenerator, self).__init__()
-        self.fpn = ResidualFPN(dimension=dimension, activation = activation)
+        super(TexasGenerator, self).__init__()
+        self.fpn = FPN(dimension=dimension, activation = activation, pretrained=False)
         self.head1 = nn.Sequential(ConvLayer(LATENT_SPACE, LATENT_SPACE, kernel_size=3, bias=False), activation,
                                    ConvLayer(LATENT_SPACE, LATENT_SPACE, kernel_size=3, bias=False), activation)
         self.head2 = nn.Sequential(ConvLayer(LATENT_SPACE, LATENT_SPACE, kernel_size=3, bias=False), activation,
@@ -41,15 +34,31 @@ class TexasResidualGenerator(nn.Module):
         smoothed = self.smooth2(smoothed + map0)
         smoothed = nn.functional.interpolate(smoothed, scale_factor=2, mode="nearest")
         final = self.deconv1(smoothed)
-        return torch.tanh(final) + x
+        return torch.tanh(final)
+
+'''DeblurGAN-v2: Deblurring (Orders-of-Magnitude) Faster and BetterOrest 
+Kupyn1, 3, Tetiana Martyniuk1, Junru Wu2, Zhangyang Wang21Ukrainian Catholic University, Lviv, Ukraine;3SoftServe, 
+Lviv, Ukraine{kupyn, t.martynyuk}@ucu.edu.ua2Department of Computer Science and Engineering, 
+Texas A&M University{sandboxmaster, atlaswang}@tamu.edu
+
+with change of backbone because mobile is not export to ONNX
+'''
+
+class TexasResidualGenerator(TexasGenerator):
+    def __init__(self, dimension, deconv=UpsampleDeConv, activation=nn.LeakyReLU()):
+        super(TexasResidualGenerator, self).__init__(dimension, deconv, activation)
+        self.fpn = FPN(dimension=dimension, activation = activation, pretrained=True)
+
+    def forward(self, x):
+        return super(TexasResidualGenerator, self) + x
 
 
-class ResidualFPN(nn.Module):
-    def __init__(self, dimension, activation):
-        super(ResidualFPN, self).__init__()
+class FPN(nn.Module):
+    def __init__(self, dimension, activation, pretrained= True):
+        super(FPN, self).__init__()
         self.activation = activation
         self.max_pool = nn.MaxPool2d(2, 2)
-        base_model = models.resnet18(pretrained=True)
+        base_model = models.resnet18(pretrained=pretrained)
         conv = nn.Conv2d(dimension, LATENT_SPACE, kernel_size=7, stride=2, padding=3, bias=False)
 
         if dimension == 1 or dimension == 3:

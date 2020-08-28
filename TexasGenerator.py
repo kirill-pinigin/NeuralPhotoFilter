@@ -10,7 +10,7 @@ LATENT_SPACE = 64
 class TexasGenerator(nn.Module):
     def __init__(self, dimension, deconv=UpsampleDeConv, activation=nn.LeakyReLU(), drop_out : float = 0.5):
         super(TexasGenerator, self).__init__()
-        self.fpn = FPN(dimension=dimension, activation = activation, pretrained=False)
+        self.fpn = FPN(dimension=dimension, activation = activation, pretrained=False, drop_out=drop_out )
         self.head1 = nn.Sequential(ConvLayer(LATENT_SPACE, LATENT_SPACE, kernel_size=3, bias=False), activation,
                                    ConvLayer(LATENT_SPACE, LATENT_SPACE, kernel_size=3, bias=False), activation)
         self.head2 = nn.Sequential(ConvLayer(LATENT_SPACE, LATENT_SPACE, kernel_size=3, bias=False), activation,
@@ -46,15 +46,15 @@ with change of backbone because mobile is not export to ONNX
 
 class TexasResidualGenerator(TexasGenerator):
     def __init__(self, dimension, deconv=UpsampleDeConv, activation=nn.LeakyReLU(), drop_out : float = 0.5):
-        super(TexasResidualGenerator, self).__init__(dimension, deconv, activation)
-        self.fpn = FPN(dimension=dimension, activation = activation, pretrained=True)
+        super(TexasResidualGenerator, self).__init__(dimension, deconv, activation,  drop_out)
+        self.fpn = FPN(dimension=dimension, activation = activation, pretrained=True, drop_out=drop_out)
 
     def forward(self, x):
         return super(TexasResidualGenerator, self) + x
 
 
 class FPN(nn.Module):
-    def __init__(self, dimension, activation, pretrained= True):
+    def __init__(self, dimension, activation, pretrained= True,  drop_out : float = 0.5):
         super(FPN, self).__init__()
         self.activation = activation
         self.max_pool = nn.MaxPool2d(2, 2)

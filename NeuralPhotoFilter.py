@@ -19,6 +19,7 @@ SCHEDULER_FACTOR = 0.2
 
 class NeuralPhotoFilter(object):
     def __init__(self, generator,  criterion, accuracy, dimension, image_size):
+
         self.cudas = list(range(torch.cuda.device_count()))
         self.generator = DataParallelModel(generator, device_ids=self.cudas, output_device=self.cudas)
         self.criterion = DataParallelCriterion(criterion, device_ids=self.cudas, output_device=self.cudas)
@@ -129,7 +130,7 @@ class NeuralPhotoFilter(object):
                         running_lossD += float(lossD.item()) * inputs.size(0)
 
                     if phase == 'val':
-                        self.display(outputs, float(acc.mean()), epoch)
+                        self.display(inputs, outputs, float(acc.mean()), epoch)
                         running_lossG = float("Nan")
                         running_lossD = float("Nan")
 
@@ -218,7 +219,7 @@ class NeuralPhotoFilter(object):
                 self.generator.module.load_state_dict(torch.load(path + '_Best.pth'))
                 print('load Best generator ')
 
-    def display(self, outputs, metric, epoch):
+    def display(self, inputs, outputs, metric, epoch):
         path = self.images + '/epoch' + str(epoch) + '/'
         flag = os.path.exists(path)
         if flag != True:
@@ -227,7 +228,7 @@ class NeuralPhotoFilter(object):
 
         for i in range(len(outputs)):
             self.iteration = self.iteration + 1
-            torchvision.utils.save_image(outputs[i].data, path + "Input_OutPut_Target_" + str(self.iteration) + '_SSIM=' + str("{0:.2f}".format(metric)) + '.jpg')
+            torchvision.utils.save_image( outputs[i].data, path + "OutPut_" + str(self.iteration) + '_SSIM=' + str("{0:.2f}".format(metric)) + '.jpg')
 
     def process(self, image_dir, modelPath=None):
         c = 0

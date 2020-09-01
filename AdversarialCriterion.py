@@ -169,6 +169,7 @@ Orest Kupyn1,3, Volodymyr Budzan1,3, Mykola Mykhailych1
 2 Visual Recognition Group, Center for Machine Perception, FEE, CTU in Prague
 {mishkdmy, matas}@cmp.felk.cvut.cz
 3 ELEKS Ltd
+
 '''
 
 class DeblurSimpleCriterion(PatchAdversarialCriterion):

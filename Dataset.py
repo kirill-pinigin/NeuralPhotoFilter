@@ -8,7 +8,8 @@ from os import listdir
 from os.path import join
 import cv2
 from PIL import ImageFilter, ImageEnhance, Image
-from PyBlur import RandomizedBlur
+#from PyBlur import RandomizedBlur
+from RandomMotionBlur import RandomMotionBlur
 
 from DualTransform import DualComposeTransforms,  DualToTensor, DualRandomCrop, DualRandomHorizontalFlip, DualResize
 
@@ -115,7 +116,7 @@ class DistortDataset(data.Dataset):
 class DeblurDataset(DistortDataset):
     def __init__(self, dimension, image_size, image_dir, augmentation: bool = False):
         super(DeblurDataset, self).__init__(dimension, image_size, image_dir, augmentation)
-        self.distorter = transforms.Compose([ RandomBlur()])
+        self.distorter = transforms.Compose([ RandomMotionBlur(image_size=image_size, dimension=dimension)])
 
     def __getitem__(self, index):
         target = load_image(self.images[index],  self.dimension, self.image_size, self.augmentation)
@@ -123,7 +124,7 @@ class DeblurDataset(DistortDataset):
         if self.augmentation is not None:
             target = self.augmentation(target)
 
-        input, target = self.distorter(target)
+        input = self.distorter(target)
         input, target = self.tensoration(input), self.tensoration(target)
         return input, target
 
@@ -186,14 +187,6 @@ class UpscalingDataset(DeblurDataset):
     def __init__(self, dimension, image_size, image_dir, augmentation):
         super(UpscalingDataset, self).__init__(dimension, image_size, image_dir, augmentation)
         self.distorter = transforms.Compose([RandomResize(image_size)])
-
-
-class RandomBlur(object):
-    def __call__(self, input):
-        return RandomizedBlur(input)
-
-    def __repr__(self):
-        return self.__class__.__name__ + '(p={})'.format(self.blurring_filters)
 
 
 class RandomNoise(object):

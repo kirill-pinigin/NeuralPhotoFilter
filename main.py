@@ -19,8 +19,8 @@ from StanfordGenerator import   StanfordGenerator, StanfordFastGenerator,  Stanf
 from TexasGenerator import TexasGenerator, TexasResidualGenerator
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--operation',         type = str,   default='MotionDeblur', help='type of deconvolution')
-parser.add_argument('--image_dir',         type = str,   default='./MotionBlurMediumDataset300/', help='path to dataset')
+parser.add_argument('--operation',         type = str,   default='Deblur', help='type of deconvolution')
+parser.add_argument('--image_dir',         type = str,   default='./ChromaVintageDataset300/', help='path to dataset')
 parser.add_argument('--dimension',         type = int,   default=3, help='must be equal 1 for grayscale or 3 for RGB')
 parser.add_argument('--image_size',        type = int,   default=256, help='pixel size of square image')
 parser.add_argument('--generator',         type = str,   default='Freiburg', help='type of image generator')

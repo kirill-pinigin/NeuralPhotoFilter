@@ -50,7 +50,7 @@ class TexasResidualGenerator(TexasGenerator):
         self.fpn = FPN(dimension=dimension, activation = activation, pretrained=True, drop_out=drop_out)
 
     def forward(self, x):
-        return super(TexasResidualGenerator, self) + x
+        return super(TexasResidualGenerator, self).forward(x) + x
 
 
 class FPN(nn.Module):

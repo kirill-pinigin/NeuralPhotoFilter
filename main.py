@@ -19,18 +19,18 @@ from StanfordGenerator import   StanfordGenerator, StanfordFastGenerator,  Stanf
 from TexasGenerator import TexasGenerator, TexasResidualGenerator
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--operation',         type = str,   default='Deblur', help='type of deconvolution')
-parser.add_argument('--image_dir',         type = str,   default='./AvaCoCoImagesDataset300/', help='path to dataset')
+parser.add_argument('--operation',         type = str,   default='MotionDeblur', help='type of deconvolution')
+parser.add_argument('--image_dir',         type = str,   default='./MotionBlurMediumDataset300/', help='path to dataset')
 parser.add_argument('--dimension',         type = int,   default=3, help='must be equal 1 for grayscale or 3 for RGB')
 parser.add_argument('--image_size',        type = int,   default=256, help='pixel size of square image')
-parser.add_argument('--generator',         type = str,   default='FreiburgFast', help='type of image generator')
-parser.add_argument('--criterion',         type = str,   default='DeblurWasserstein', help='type of criterion')
+parser.add_argument('--generator',         type = str,   default='Freiburg', help='type of image generator')
+parser.add_argument('--criterion',         type = str,   default='MobileImproving', help='type of criterion')
 parser.add_argument('--deconv',            type = str,   default='Upsample', help='type of deconv')
 parser.add_argument('--activation',        type = str,   default='ReLU', help='type of activation')
 parser.add_argument('--optimizer',         type = str,   default='Adam', help='type of optimizer')
-parser.add_argument('--batch_size',        type = int,   default=128)
+parser.add_argument('--batch_size',        type = int,   default=64)
 parser.add_argument('--epochs',            type = int,   default=256)
-parser.add_argument('--drop_out',          type = float, default=0.5)
+parser.add_argument('--drop_out',          type = float, default=0.0)
 parser.add_argument('--resume_train',      type = bool,  default=True)
 
 args = parser.parse_args()
@@ -141,5 +141,6 @@ image_loaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=ar
                 for x in ['train', 'val']}
 
 framework = NeuralPhotoFilter(generator = generator, criterion = criterion, accuracy=accuracy, dimension=args.dimension, image_size=args.image_size)
+#framework.simulate(image_loaders['val'])
 framework.approximate(dataloaders = image_loaders, num_epochs=args.epochs, resume_train=args.resume_train)
 framework.estimate(image_loaders['val'])

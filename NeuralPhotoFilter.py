@@ -199,6 +199,39 @@ class NeuralPhotoFilter(object):
             time_elapsed // 60, time_elapsed % 60))
         print(' Accuracy {:.4f} '.format(epoch_acc))
 
+    def simulate(self, test_loader):
+        counter = 0
+        since = time.time()
+        running_corrects = 0
+        path = self.images + '/simulation/'
+
+        flag = os.path.exists(path)
+        if flag != True:
+            os.makedirs(path)
+            print('os.makedirs("path")')
+
+        test_loader.dataset.deprocess = True
+
+        for data in test_loader:
+            inputs, targets = data[0], data[1]
+            inputs, targets = inputs.to(self.device), targets.to(self.device)
+            acc = self.accuracy.module(inputs, targets)
+            metric = float(acc.item())
+            counter = counter + 1
+            results = torch.cat([inputs, targets], dim=0)
+            torchvision.utils.save_image(results, path + "Input__Target_" + str(counter) + '_SSIM=' + str(
+                "{0:.2f}".format(metric)) + '.jpg')
+
+            running_corrects += acc.item() * inputs.size(0)
+
+        epoch_acc = float(running_corrects) / float(len(test_loader.dataset))
+
+        time_elapsed = time.time() - since
+
+        print('Evaluating complete in {:.0f}m {:.0f}s'.format(
+            time_elapsed // 60, time_elapsed % 60))
+        print(' Accuracy {:.4f} '.format(epoch_acc))
+
     def save(self, type):
         self.generator.module.to("cpu")
         x = torch.zeros(1, self.dimension, self.image_size, self.image_size)

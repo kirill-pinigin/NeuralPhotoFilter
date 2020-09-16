@@ -56,6 +56,8 @@ class Image2ImageDataset(data.Dataset):
         dirs.sort()
         self.inputs  = [join(image_dir + '/' + dirs[0], x) for x in listdir(image_dir + '/' + dirs[0]) if is_image_file(x)]
         self.targets = [join(image_dir + '/' + dirs[1], x) for x in listdir(image_dir + '/' + dirs[1]) if is_image_file(x)]
+        print(len(self.inputs))
+        print(len(self.targets))
 
     def __getitem__(self, index):
         input = load_image(self.inputs[index], self.dimension,  self.image_size, self.augmentation)
@@ -114,6 +116,16 @@ class DeblurDataset(DistortDataset):
     def __init__(self, dimension, image_size, image_dir, augmentation: bool = False):
         super(DeblurDataset, self).__init__(dimension, image_size, image_dir, augmentation)
         self.distorter = transforms.Compose([ RandomBlur()])
+
+    def __getitem__(self, index):
+        target = load_image(self.images[index],  self.dimension, self.image_size, self.augmentation)
+
+        if self.augmentation is not None:
+            target = self.augmentation(target)
+
+        input, target = self.distorter(target)
+        input, target = self.tensoration(input), self.tensoration(target)
+        return input, target
 
 
 class DenoiseDataset(DistortDataset):
